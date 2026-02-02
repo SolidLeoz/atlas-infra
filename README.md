@@ -186,5 +186,5 @@ Progetto didattico - Leonardo Pericoli (2026)
 
 ## 📧 Contatti
 
-- LinkedIn: [leonardo-pericoli-fullstack](https://linkedin.com/in/leonardo-pericoli-fullstack/)
+- LinkedIn: [leonardo-pericoli-fullstack](https://www.linkedin.com/in/leonardo-fullstack/)
 - Email: pericolileonardo@gmail.com
