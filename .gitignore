@@ -8,6 +8,7 @@
 atlas-core/edge-hub/telegraf.conf
 atlas-core/edge-hub/provisioning/datasources/influxdb.yml
 atlas-core/atlas-agent-core/telegraf.conf
+atlas-core/mosquitto/atlas.conf
 
 # Certificates and logs
 **/certs/
@@ -21,3 +22,6 @@ atlas-core/atlas-agent-core/telegraf.conf
 # Backups and archives
 **/*.bak
 **/*.tar.gz
+
+# Host-specific work dirs
+solidserver/
