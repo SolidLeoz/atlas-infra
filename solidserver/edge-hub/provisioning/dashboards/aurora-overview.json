@@ -4,7 +4,7 @@
   "tags": ["aurora", "overview"],
   "timezone": "",
   "schemaVersion": 38,
-  "version": 2,
+  "version": 3,
   "refresh": "10s",
   "time": {
     "from": "now-6h",
@@ -27,7 +27,7 @@
         "includeAll": true,
         "allValue": ".*",
         "sort": 1,
-        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"telemetry\", tag: \"device\")",
+        "query": "import \"influxdata/influxdb/schema\"\nschema.tagValues(bucket: \"telemetry\", tag: \"device\", predicate: (r) => r.device != \"solidserver-agent\" and r.device != \"mobile-xiaomi\")",
         "current": {
           "text": "All",
           "value": "$__all"
