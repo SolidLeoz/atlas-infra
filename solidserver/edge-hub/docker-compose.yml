@@ -47,7 +47,7 @@ services:
     depends_on:
       - influxdb
 
-    # ✅ Best practice: UI solo in locale
+    # ✅ UI esposta su Tailscale (bind configurabile via EDGE_GRAFANA_BIND_ADDR)
     ports:
       - "${EDGE_GRAFANA_BIND_ADDR}:${EDGE_GRAFANA_PORT_HOST}:3000"
 

@@ -864,7 +864,7 @@ Devices:
 
 ### **Grafana**
 ```yaml
-URL: http://${AURORA_SOLIDSERVER_TS_IP}:3001
+URL: http://${AURORA_SOLIDSERVER_TS_IP}:3001 (MagicDNS: http://solidserver:3001/)
 Credentials:
   - Username: ${EDGE_GRAFANA_ADMIN_USER}
   - Password: ${EDGE_GRAFANA_ADMIN_PASSWORD}
