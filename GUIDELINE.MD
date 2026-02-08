@@ -287,7 +287,7 @@ Database:
   Host: ${ATLAS_CORE_TS_IP}:8086
   Org: ${EDGE_INFLUX_ORG}
   Bucket: telemetry
-  Token: ${EDGE_INFLUX_ADMIN_TOKEN}
+  Token: ${EDGE_INFLUX_GRAFANA_TOKEN} (read)
   
 Measurements disponibili:
   - cpu (fields: usage_active, usage_idle, ...)
@@ -449,6 +449,7 @@ Config file: ~/atlas-mobile/config.yaml
 5. **Rate limiting**: Max 10 comandi vocali/minuto per prevenire abuse
 6. **Logging**: Tutti i comandi loggati per audit
 7. **Secrets & indirizzi**: Tutti i valori sensibili e gli indirizzi sono in `.env` centrale (non committato); i template usano `envsubst`.
+8. **Least privilege**: Token Influx separati (read/write) e ACL MQTT opzionali per topic.
 
 ---
 
@@ -665,7 +666,7 @@ Network: Tailscale mesh
 │   │       result_key: device
 │   │   [[outputs.influxdb_v2]]
 │   │     urls: ${EDGE_INFLUX_URL_TELEGRAF}
-│   │     token: ${EDGE_INFLUX_ADMIN_TOKEN}
+│   │     token: ${EDGE_INFLUX_TELEGRAF_TOKEN}
 │   │     organization: ${EDGE_INFLUX_ORG}
 │   │     bucket: ${EDGE_INFLUX_BUCKET}
 │   │
@@ -767,6 +768,7 @@ Network: Tailscale mesh
 │       require_certificate true
 │       use_identity_as_username true
 │       allow_anonymous false
+│       acl_file ${MOSQUITTO_ACL_FILE}  # optional
 │
 └── certs/
     ├── ca.crt                           # CA certificate
@@ -797,8 +799,9 @@ Bucket: telemetry
   - ID: 94499a39ccb4a7ee
 
 Tokens:
-  - ${EDGE_INFLUX_ADMIN_TOKEN} (admin, all permissions)
-  - <read-only-token> (store in .env, not in Git)
+  - ${EDGE_INFLUX_ADMIN_TOKEN} (admin, bootstrap only)
+  - ${EDGE_INFLUX_TELEGRAF_TOKEN} (write: telemetry)
+  - ${EDGE_INFLUX_GRAFANA_TOKEN} (read: telemetry)
 
 Measurements:
   - cpu (from all agents)
@@ -827,7 +830,7 @@ Credentials:
 Data Sources:
   - InfluxDB-Telemetry
     URL: ${EDGE_INFLUX_URL_GRAFANA}
-    Token: ${EDGE_INFLUX_ADMIN_TOKEN}
+    Token: ${EDGE_INFLUX_GRAFANA_TOKEN}
     Organization: ${EDGE_INFLUX_ORG}
     Bucket: ${EDGE_INFLUX_BUCKET}
 
@@ -1150,7 +1153,7 @@ mosquitto_sub -h ${ATLAS_CORE_TS_IP} -p 1883 -t "devices/#" -v
 
 # Verifica InfluxDB
 docker exec -it edge-hub-influxdb-1 influx bucket list --org ${EDGE_INFLUX_ORG}
-docker exec -it edge-hub-influxdb-1 influx query 'from(bucket:"telemetry") |> range(start:-5m) |> limit(n:10)' --org ${EDGE_INFLUX_ORG} --token ${EDGE_INFLUX_ADMIN_TOKEN}
+docker exec -it edge-hub-influxdb-1 influx query 'from(bucket:"telemetry") |> range(start:-5m) |> limit(n:10)' --org ${EDGE_INFLUX_ORG} --token ${EDGE_INFLUX_GRAFANA_TOKEN}
 
 # Verifica certificati broker
 ls -lh /etc/mosquitto/certs/

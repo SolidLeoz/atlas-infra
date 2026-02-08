@@ -25,6 +25,8 @@ stored and visualized for academic or lab research workflows.
 
 ## Security model
 - Mutual TLS (X.509) for all external MQTT connections.
+- Least-privilege Influx tokens: separate read token (Grafana) and write token
+  (Telegraf). Admin token is for bootstrap only.
 - Centralized secrets and addresses in a single .env file per host.
 - Runtime configs are generated via templates and envsubst; they are not
   committed to Git.
@@ -62,6 +64,9 @@ Edit values for:
 - Tailscale IPs
 - Influx/Grafana credentials
 - MQTT broker address
+- Influx tokens:
+  - `EDGE_INFLUX_TELEGRAF_TOKEN` (write)
+  - `EDGE_INFLUX_GRAFANA_TOKEN` (read)
 
 Link the env into each component directory:
 ```bash
@@ -153,7 +158,7 @@ mosquitto_sub -h 127.0.0.1 -p 1883 -t 'devices/+/telemetry' -C 1 -W 5
 
 source ~/.env
 docker exec edge-hub-influxdb-1 influx query --org "$EDGE_INFLUX_ORG" \
-  --token "$EDGE_INFLUX_ADMIN_TOKEN" \
+  --token "$EDGE_INFLUX_GRAFANA_TOKEN" \
   'from(bucket:"telemetry") |> range(start:-10m) |> limit(n:5)'
 ```
 
@@ -164,3 +169,8 @@ Grafana:
 ## Notes
 - If MagicDNS is not enabled, atlas-core will not resolve; use the Tailscale IP.
 - For external access to Grafana, EDGE_GRAFANA_BIND_ADDR must be 0.0.0.0.
+- If you use HTTPS for Influx, keep `EDGE_INFLUX_TLS_SKIP_VERIFY=false` and
+  provide a valid CA.
+- To enforce per-device MQTT ACLs, copy
+  `atlas-core/mosquitto/acl.conf.example` to `/etc/mosquitto/acl.conf` and set
+  `MOSQUITTO_ACL_FILE` in `.env`, then re-render the Mosquitto config.

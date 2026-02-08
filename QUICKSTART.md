@@ -5,6 +5,10 @@ Fast path to get the stack running and verified.
 ## 1) Prepare the env (all hosts)
 1. Copy `.env.example` to `~/.env`.
 2. Fill in Tailscale IPs, tokens, and passwords.
+   - Create least-privilege Influx tokens:
+     - `EDGE_INFLUX_TELEGRAF_TOKEN` (write to `telemetry`)
+     - `EDGE_INFLUX_GRAFANA_TOKEN` (read from `telemetry`)
+   - Keep `EDGE_INFLUX_ADMIN_TOKEN` for setup only.
 3. Link into each component folder: `ln -s ~/.env ./.env`
 
 ## 2) atlas-core (core services)
@@ -56,9 +60,11 @@ mosquitto_sub -h 127.0.0.1 -p 1883 -t 'devices/+/telemetry' -C 1 -W 10
 ### InfluxDB (last 10m)
 ```bash
 source ~/.env
-docker exec edge-hub-influxdb-1 influx query --org "$EDGE_INFLUX_ORG" --token "$EDGE_INFLUX_ADMIN_TOKEN" \
+docker exec edge-hub-influxdb-1 influx query --org "$EDGE_INFLUX_ORG" --token "$EDGE_INFLUX_GRAFANA_TOKEN" \
 'from(bucket:"telemetry") |> range(start:-10m) |> limit(n:5)'
 ```
+If you only have the admin token, replace `EDGE_INFLUX_GRAFANA_TOKEN` with
+`EDGE_INFLUX_ADMIN_TOKEN`.
 
 ### Grafana
 - URL: `http://atlas-core:3001/`

@@ -30,6 +30,16 @@ set +a
 : "${MOSQUITTO_CERTFILE:?missing MOSQUITTO_CERTFILE}"
 : "${MOSQUITTO_KEYFILE:?missing MOSQUITTO_KEYFILE}"
 
+MOSQUITTO_ACL_LINE=""
+if [[ -n "${MOSQUITTO_ACL_FILE:-}" ]]; then
+  if [[ ! -f "${MOSQUITTO_ACL_FILE}" ]]; then
+    echo "[ERR] MOSQUITTO_ACL_FILE non trovato: ${MOSQUITTO_ACL_FILE}" >&2
+    exit 1
+  fi
+  MOSQUITTO_ACL_LINE="acl_file ${MOSQUITTO_ACL_FILE}"
+fi
+export MOSQUITTO_ACL_LINE
+
 if ! command -v envsubst >/dev/null 2>&1; then
   echo "[ERR] envsubst non trovato. Installa con: sudo apt-get update && sudo apt-get install -y gettext-base" >&2
   exit 1

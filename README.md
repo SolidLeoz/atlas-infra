@@ -79,3 +79,9 @@ Optional env:
 - External MQTT traffic is TLS-only on port 8883.
 - Keep `.env` and certs out of Git (see `.gitignore`).
 - The legacy `atlas-field/atlas-dashboard` is deprecated; use atlas-core Grafana.
+- Use least-privilege Influx tokens: `EDGE_INFLUX_TELEGRAF_TOKEN` (write) and
+  `EDGE_INFLUX_GRAFANA_TOKEN` (read). Keep the admin token for setup only.
+- Optional Mosquitto ACLs: copy `atlas-core/mosquitto/acl.conf.example` to
+  `/etc/mosquitto/acl.conf` and set `MOSQUITTO_ACL_FILE` in `.env`.
+- If you use HTTPS for Influx, keep `EDGE_INFLUX_TLS_SKIP_VERIFY=false` and
+  provide a valid CA.

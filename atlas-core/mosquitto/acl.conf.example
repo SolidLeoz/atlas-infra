@@ -1,0 +1,22 @@
+# Atlas MQTT ACL example (mTLS + use_identity_as_username)
+# Each CN can only write its own telemetry and read its own commands.
+
+user atlas-core
+topic readwrite devices/atlas-core/#
+
+user atlas-lab
+topic write devices/atlas-lab/#
+topic read devices/atlas-lab/commands
+
+user atlas-field
+topic write devices/atlas-field/#
+topic read devices/atlas-field/commands
+
+user atlas-mobile
+topic write devices/atlas-mobile/#
+topic read devices/atlas-mobile/commands
+
+# Optional IoT gateway client (if you issue a dedicated cert)
+# user gateway-atlas-core
+# topic write devices/atlas-core/telemetry
+# topic read devices/atlas-core/commands

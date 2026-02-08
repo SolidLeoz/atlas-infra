@@ -12,3 +12,6 @@ keyfile ${MOSQUITTO_KEYFILE}
 require_certificate true
 use_identity_as_username true
 allow_anonymous false
+
+# ACLs (optional)
+${MOSQUITTO_ACL_LINE}

@@ -9,6 +9,6 @@ datasources:
       version: Flux
       organization: ${EDGE_INFLUX_ORG}
       defaultBucket: ${EDGE_INFLUX_BUCKET}
-      tlsSkipVerify: true
+      tlsSkipVerify: ${EDGE_INFLUX_TLS_SKIP_VERIFY}
     secureJsonData:
-      token: ${EDGE_INFLUX_ADMIN_TOKEN}
+      token: ${EDGE_INFLUX_GRAFANA_TOKEN}

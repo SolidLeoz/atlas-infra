@@ -8,7 +8,7 @@
 
 [[outputs.influxdb_v2]]
   urls = ["${EDGE_INFLUX_URL_TELEGRAF}"]
-  token = "${EDGE_INFLUX_ADMIN_TOKEN}"
+  token = "${EDGE_INFLUX_TELEGRAF_TOKEN}"
   organization = "${EDGE_INFLUX_ORG}"
   bucket = "${EDGE_INFLUX_BUCKET}"
 
