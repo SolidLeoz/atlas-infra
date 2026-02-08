@@ -21,7 +21,6 @@ import uuid
 import os
 import sys
 import fcntl
-from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
 
@@ -101,6 +100,61 @@ def resolve_topic(value, fallback):
     if not value or is_unresolved(value):
         return fallback
     return value
+
+
+def _escape_measurement(value):
+    return str(value).replace("\\", "\\\\").replace(" ", "\\ ").replace(",", "\\,")
+
+
+def _escape_tag(value):
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace(" ", "\\ ")
+        .replace(",", "\\,")
+        .replace("=", "\\=")
+    )
+
+
+def _escape_field_key(value):
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace(" ", "\\ ")
+        .replace(",", "\\,")
+        .replace("=", "\\=")
+    )
+
+
+def _format_fields(fields):
+    parts = []
+    for key, value in fields.items():
+        if value is None:
+            continue
+        key = _escape_field_key(key)
+        if isinstance(value, bool):
+            parts.append(f"{key}={str(value).lower()}")
+        elif isinstance(value, int):
+            parts.append(f"{key}={value}i")
+        elif isinstance(value, float):
+            parts.append(f"{key}={value}")
+        else:
+            escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+            parts.append(f'{key}="{escaped}"')
+    return ",".join(parts)
+
+
+def _format_line_protocol(measurement, tags, fields, timestamp_ns):
+    measurement = _escape_measurement(measurement)
+    tags_part = ",".join(
+        f"{_escape_tag(k)}={_escape_tag(v)}" for k, v in (tags or {}).items() if v is not None
+    )
+    fields_part = _format_fields(fields or {})
+    if not fields_part:
+        return None
+    if tags_part:
+        measurement = f"{measurement},{tags_part}"
+    return f"{measurement} {fields_part} {timestamp_ns}"
 
 
 # ----------------------------
@@ -382,38 +436,48 @@ try:
         battery = get_battery_status()
 
         if battery:
-            ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            timestamp_ns = int(time.time() * 1_000_000_000)
+            percentage = battery.get("percentage")
+            temperature = battery.get("temperature")
+            status = battery.get("status") or "unknown"
 
-            battery_payload = {
-                "timestamp": ts,
-                "device_id": DEVICE_ID,
-                "percentage": battery.get("percentage"),
-                "temperature": battery.get("temperature", 0),
-                "status": battery.get("status"),
-            }
+            battery_fields = {}
+            if percentage is not None:
+                battery_fields["percentage"] = float(percentage)
+            if temperature is not None:
+                battery_fields["temperature"] = float(temperature)
 
-            client.publish(
-                sensors_topics_cfg["battery"],
-                json.dumps(battery_payload),
-                qos=1,
+            battery_line = _format_line_protocol(
+                "mobile_battery",
+                {"status": status},
+                battery_fields,
+                timestamp_ns,
             )
+            if battery_line:
+                client.publish(
+                    sensors_topics_cfg["battery"],
+                    battery_line,
+                    qos=1,
+                )
 
-            telemetry = {
-                "timestamp": ts,
-                "device_id": DEVICE_ID,
-                "iteration": iteration,
-                "battery": {
-                    "percentage": battery.get("percentage"),
-                    "temperature": battery.get("temperature", 0),
-                    "status": battery.get("status"),
-                },
-            }
+            telemetry_fields = {"iteration": int(iteration)}
+            if percentage is not None:
+                telemetry_fields["battery_percent"] = float(percentage)
+            if temperature is not None:
+                telemetry_fields["battery_temp"] = float(temperature)
 
-            client.publish(
-                topics_cfg["telemetry"],
-                json.dumps(telemetry),
-                qos=1,
+            telemetry_line = _format_line_protocol(
+                "mobile_telemetry",
+                {"status": status},
+                telemetry_fields,
+                timestamp_ns,
             )
+            if telemetry_line:
+                client.publish(
+                    topics_cfg["telemetry"],
+                    telemetry_line,
+                    qos=1,
+                )
 
             logger.info(
                 f"Telemetria #{iteration} - Batteria: {battery.get('percentage')}%"

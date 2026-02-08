@@ -10,3 +10,9 @@ Setup:
 - Ensure the env contains the `XIAOMI_*` variables from the root `.env.example`.
 - Install Termux boot scripts from `termux-boot/` into `~/.termux/boot/`.
 - Start manually: `python mobile_sensors.py`.
+
+Telemetry format:
+- Publishes Influx line protocol.
+- Topics/measurements:
+  - `devices/<device>/sensors/battery` -> `mobile_battery` (percentage, temperature, status tag)
+  - `devices/<device>/telemetry` -> `mobile_telemetry` (iteration, battery_percent, battery_temp, status tag)

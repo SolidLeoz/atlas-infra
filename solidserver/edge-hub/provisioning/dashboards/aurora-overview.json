@@ -4,7 +4,7 @@
   "tags": ["aurora", "overview"],
   "timezone": "",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "time": {
     "from": "now-6h",
@@ -96,7 +96,7 @@
     {
       "id": 3,
       "type": "timeseries",
-      "title": "Disk Used (%) (root)",
+      "title": "Disk Used (%)",
       "datasource": "InfluxDB",
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "fieldConfig": {
@@ -110,7 +110,7 @@
       "targets": [
         {
           "refId": "A",
-          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"disk\" and r._field == \"used_percent\" and r.path == \"/\")\n  |> filter(fn: (r) => r.device =~ /${device:regex}/)\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")",
+          "query": "from(bucket: \"telemetry\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"disk\" and r._field == \"used_percent\")\n  |> filter(fn: (r) => r.device =~ /${device:regex}/)\n  |> group(columns: [\"device\"])\n  |> aggregateWindow(every: v.windowPeriod, fn: max, createEmpty: false)\n  |> yield(name: \"max\")",
           "legendFormat": "{{device}}"
         }
       ]

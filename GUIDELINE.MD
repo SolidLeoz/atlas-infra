@@ -153,7 +153,7 @@
    Output JSON:
    {
      "intent": "query_metric",
-     "target": "solidserver-agent",
+     "target": "solidserver",
      "metric": "temperature",
      "action": "get_current_value"
    }
@@ -164,7 +164,7 @@
    
 7. ACTION EXECUTION
    a) Query InfluxDB via REST API:
-      GET http://${AURORA_SOLIDSERVER_TS_IP}:8001/metrics/solidserver-agent/temperature
+      GET http://${AURORA_SOLIDSERVER_TS_IP}:8001/metrics/solidserver/temperature
       
    b) Response: {"value": 42.5, "unit": "celsius", "timestamp": "..."}
    
@@ -245,8 +245,7 @@ aurora/
 │   │
 │   ├── ofsc/telemetry           # EXISTING: system metrics
 │   ├── workstation/telemetry    # EXISTING: system metrics
-│   ├── solidserver-agent/telemetry
-│   └── solidserver/telemetry    # EXISTING: gateway sensors
+│   └── solidserver/telemetry    # system metrics + gateway sensors
 │
 └── system/
     ├── alerts/#                 # System-wide alerts
@@ -573,9 +572,9 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 │   ├── workstation.crt                  # Client cert per workstation (1717 bytes)
 │   ├── workstation.key                  # Client key per workstation (1704 bytes)
 │   ├── workstation.csr                  # CSR workstation
-│   ├── solidserver-agent.crt            # Client cert per solidserver (1651 bytes)
-│   ├── solidserver-agent.key            # Client key (1704 bytes)
-│   └── solidserver-agent.csr            # CSR solidserver
+│   ├── solidserver.crt             # Client cert per solidserver (1651 bytes)
+│   ├── solidserver.key             # Client key (1704 bytes)
+│   └── solidserver.csr             # CSR solidserver
 │
 ├── aurora-agent-workstation/            # Telegraf Agent per workstation
 │   ├── docker-compose.yml               # Container config
@@ -781,8 +780,8 @@ Network: Tailscale mesh
 │   ├── telegraf.conf.bak
 │   └── certs/
 │       ├── ca.crt
-│       ├── solidserver-agent.crt
-│       └── solidserver-agent.key
+│       ├── solidserver.crt
+│       └── solidserver.key
 │
 └── (altri progetti esistenti)
 
@@ -854,12 +853,14 @@ Measurements:
   - system (from all agents)
   - temp (from all agents)
   - sensors (from gateway solidserver)
+  - mobile_battery (from xiaomi)
+  - mobile_telemetry (from xiaomi)
 
 Devices:
   - ofsc
   - workstation
-  - solidserver-agent
-  - solidserver (gateway)
+  - solidserver
+  - mobile-xiaomi
 ```
 
 ### **Grafana**
@@ -967,7 +968,7 @@ Hostname: ofsc
 ```
 /data/data/com.termux/files/home/
 │
-└── aurora-mobile/                       # Client MQTT telemetria batteria
+└── aurora-mobile/                       # Client MQTT telemetria mobile
     ├── config.yaml
     │   mqtt:
     │     broker: ${XIAOMI_MQTT_BROKER_HOST}
@@ -989,7 +990,9 @@ Hostname: ofsc
     │
     ├── mobile_sensors.py                # MQTT + Termux sensors + comandi
     │   - Legge batteria via Termux API
-    │   - Pubblica telemetria + battery topic
+    │   - Pubblica Influx line protocol:
+    │     - mobile_battery (sensors/battery)
+    │     - mobile_telemetry (telemetry)
     │   - Sottoscrive ${XIAOMI_MQTT_COMMANDS_TOPIC}
     │
     └── certs/
@@ -1062,11 +1065,11 @@ Location: solidserver:/etc/mosquitto/certs/broker.crt
    Used by: Telegraf agent workstation
    MQTT username: workstation
 
-3. solidserver-agent
-   Location: solidserver:~/aurora-agent-solidserver/certs/solidserver-agent.crt
-   CN: solidserver-agent
+3. solidserver
+   Location: solidserver:~/aurora-agent-solidserver/certs/solidserver.crt
+   CN: solidserver
    Used by: Telegraf agent solidserver
-   MQTT username: solidserver-agent
+   MQTT username: solidserver
 
 4. mobile (xiaomi)
    Location: xiaomi:~/aurora-mobile/certs/mobile.crt
@@ -1091,22 +1094,21 @@ devices/
 │       Frequency: 10s
 │       Measurements: cpu, mem, disk, system, temp
 │
-├── solidserver-agent/
-│   └── telemetry                        # Line Protocol (Telegraf)
-│       Frequency: 10s
-│       Measurements: cpu, mem, disk, system, temp
-│
 ├── solidserver/
-│   ├── telemetry                        # Line Protocol (Gateway)
-│   │   Frequency: 6s
-│   │   Measurements: sensors (temperature, cpu_usage)
+│   ├── telemetry                        # Line Protocol (Telegraf + Gateway)
+│   │   Frequency: 6-10s
+│   │   Measurements: cpu, mem, disk, system, temp, sensors
 │   └── commands                         # Commands to gateway
 │       Payload: {"action": "set_interval", "value": X}
 │
-└── xiaomi/
-    └── telemetry                        # JSON (Python client)
-        Frequency: 60s
-        Payload: {"battery_level": X, "battery_status": "...", ...}
+└── mobile-xiaomi/
+    ├── sensors/
+    │   └── battery                      # Line Protocol (mobile_battery)
+    │       Frequency: 10s
+    │       Measurements: percentage, temperature
+    └── telemetry                        # Line Protocol (mobile_telemetry)
+        Frequency: 10s
+        Measurements: iteration, battery_percent, battery_temp
 ```
 
 ---
