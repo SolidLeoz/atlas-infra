@@ -27,3 +27,9 @@
     pattern = "^devices/([^/]+)/.*"
     replacement = "${1}"
     result_key = "device"
+
+  [[processors.regex.tags]]
+    key = "device"
+    pattern = "^mobile-xiaomi$"
+    replacement = "xiaomi"
+    result_key = "device"
