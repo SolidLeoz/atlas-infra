@@ -330,7 +330,7 @@ def get_cpu_usage_active():
     global _prev_cpu_total, _prev_cpu_idle
     line = _read_first_line("/proc/stat")
     if not line or not line.startswith("cpu "):
-        return None
+        return get_cpu_usage_from_top()
     parts = line.split()
     try:
         values = [int(x) for x in parts[1:]]
@@ -349,13 +349,45 @@ def get_cpu_usage_active():
     _prev_cpu_total = total
     _prev_cpu_idle = idle
     if delta_total <= 0:
-        return None
+        return get_cpu_usage_from_top()
     usage = 100.0 * (delta_total - delta_idle) / delta_total
     if usage < 0:
         return 0.0
     if usage > 100:
         return 100.0
     return usage
+
+
+def get_cpu_usage_from_top():
+    try:
+        result = subprocess.run(
+            ["top", "-b", "-n", "1"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return None
+        for line in result.stdout.splitlines():
+            if "%cpu" not in line or "%idle" not in line:
+                continue
+            total_pct = None
+            idle_pct = None
+            for token in line.split():
+                if token.endswith("%cpu"):
+                    total_pct = float(token.replace("%cpu", ""))
+                elif token.endswith("%idle"):
+                    idle_pct = float(token.replace("%idle", ""))
+            if total_pct is None or idle_pct is None or total_pct <= 0:
+                return None
+            usage = (total_pct - idle_pct) / total_pct * 100.0
+            if usage < 0:
+                return 0.0
+            if usage > 100:
+                return 100.0
+            return usage
+    except Exception:
+        return None
 
 
 def get_mem_used_percent():
@@ -395,24 +427,80 @@ def get_disk_used_percent(path):
         return None
 
 
-def get_load1():
-    line = _read_first_line("/proc/loadavg")
+def _parse_uptime_line(line):
     if not line:
-        return None
+        return None, None
+    if "load average" not in line:
+        return None, None
+    before, _, after = line.partition("load average:")
+    load1 = None
     try:
-        return float(line.split()[0])
+        load1 = float(after.strip().split(",")[0])
     except (ValueError, IndexError):
-        return None
+        load1 = None
+    uptime_seconds = None
+    up_idx = before.find(" up ")
+    if up_idx != -1:
+        uptime_str = before[up_idx + 4 :].strip().rstrip(",")
+        days = 0
+        hours = 0
+        minutes = 0
+        for part in [p.strip() for p in uptime_str.split(",") if p.strip()]:
+            if "day" in part:
+                try:
+                    days += int(part.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            elif ":" in part:
+                try:
+                    hour_str, min_str = part.split(":", 1)
+                    hours += int(hour_str)
+                    minutes += int(min_str)
+                except (ValueError, IndexError):
+                    pass
+            elif "min" in part:
+                try:
+                    minutes += int(part.split()[0])
+                except (ValueError, IndexError):
+                    pass
+            elif "hr" in part:
+                try:
+                    hours += int(part.split()[0])
+                except (ValueError, IndexError):
+                    pass
+        uptime_seconds = (days * 86400) + (hours * 3600) + (minutes * 60)
+    return uptime_seconds, load1
 
 
-def get_uptime_seconds():
+def get_uptime_and_load():
+    uptime_seconds = None
+    load1 = None
     line = _read_first_line("/proc/uptime")
-    if not line:
-        return None
+    if line:
+        try:
+            uptime_seconds = int(float(line.split()[0]))
+        except (ValueError, IndexError):
+            uptime_seconds = None
+    line = _read_first_line("/proc/loadavg")
+    if line:
+        try:
+            load1 = float(line.split()[0])
+        except (ValueError, IndexError):
+            load1 = None
+    if uptime_seconds is not None or load1 is not None:
+        return uptime_seconds, load1
     try:
-        return int(float(line.split()[0]))
-    except (ValueError, IndexError):
-        return None
+        result = subprocess.run(
+            ["uptime"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode != 0:
+            return None, None
+        return _parse_uptime_line(result.stdout.strip())
+    except Exception:
+        return None, None
 
 
 # ----------------------------
@@ -624,10 +712,9 @@ try:
                 lines.append(disk_line)
 
         system_fields = {}
-        uptime_seconds = get_uptime_seconds()
+        uptime_seconds, load1 = get_uptime_and_load()
         if uptime_seconds is not None:
             system_fields["uptime"] = int(uptime_seconds)
-        load1 = get_load1()
         if load1 is not None:
             system_fields["load1"] = float(load1)
         if system_fields:
