@@ -28,6 +28,7 @@
     replacement = "${1}"
     result_key = "device"
 
+[[processors.regex]]
   [[processors.regex.tags]]
     key = "device"
     pattern = "^mobile-xiaomi$"
