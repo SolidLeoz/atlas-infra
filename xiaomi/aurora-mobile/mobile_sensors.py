@@ -283,12 +283,11 @@ except Exception as e:
 # ----------------------------
 DEVICE_ID = device_id
 MQTT_CLIENT_ID = f"{DEVICE_ID}-{socket.gethostname()}-{uuid.uuid4().hex[:6]}"
+DISK_PATH = os.path.expanduser(env_value("XIAOMI_DISK_PATH") or "~")
 
 logger.info(f"DEVICE_ID (payload): {DEVICE_ID}")
 logger.info(f"MQTT_CLIENT_ID (connessione): {MQTT_CLIENT_ID}")
 logger.info(f"DISK_PATH: {DISK_PATH}")
-
-DISK_PATH = os.path.expanduser(env_value("XIAOMI_DISK_PATH") or "~")
 
 
 # ----------------------------
