@@ -366,7 +366,7 @@ def on_connect(client, userdata, flags, rc, properties=None):
         logger.error(f"Connessione fallita: rc={rc}")
 
 
-def on_disconnect(client, userdata, rc, properties=None):
+def on_disconnect(client, userdata, rc, properties=None, reason_code=None):
     if rc != 0:
         logger.warning(f"Disconnesso in modo inatteso (rc={rc}). Il loop tenterà reconnect.")
     else:
