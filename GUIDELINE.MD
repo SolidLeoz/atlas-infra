@@ -1,4 +1,4 @@
-# 🎙️ **DESIGN COMPLETO: AURORA VOICE ASSISTANT**
+# 🎙️ **DESIGN COMPLETO: ATLAS VOICE ASSISTANT**
 
 ---
 
@@ -8,16 +8,16 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    WORKSTATION (Central Brain)                          │
-│                    ${AURORA_WORKSTATION_TS_IP} - Ubuntu + GPU 4060Ti                   │
+│                    ATLAS-LAB (Central Brain)                          │
+│                    ${ATLAS_LAB_TS_IP} - Ubuntu + GPU 4060Ti                   │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌──────────────────────────────────────────────────────────────────┐ │
-│  │              CONTAINER: aurora-voice-engine                      │ │
-│  │  Port: 8000 (API), Network: aurora-net                          │ │
+│  │              CONTAINER: atlas-voice-engine                      │ │
+│  │  Port: 8000 (API), Network: atlas-net                          │ │
 │  ├──────────────────────────────────────────────────────────────────┤ │
 │  │  1. MQTT Subscriber (voice/+/audio/request)                     │ │
-│  │     ↓ riceve audio Base64 da Xiaomi                             │ │
+│  │     ↓ riceve audio Base64 da Atlas Mobile                             │ │
 │  │                                                                  │ │
 │  │  2. Whisper STT (faster-whisper + CUDA)                         │ │
 │  │     ↓ audio → text transcription                                │ │
@@ -40,11 +40,11 @@
 │  │     ↓ text → audio WAV                                          │ │
 │  │                                                                  │ │
 │  │  7. MQTT Publisher (voice/+/audio/response)                     │ │
-│  │     ↓ invia audio Base64 a Xiaomi                               │ │
+│  │     ↓ invia audio Base64 a Atlas Mobile                               │ │
 │  └──────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
 │  ┌──────────────────────────────────────────────────────────────────┐ │
-│  │              CONTAINER: aurora-ollama                            │ │
+│  │              CONTAINER: atlas-ollama                            │ │
 │  │  Port: 11434, GPU: enabled, Model: llama3.2:3b                  │ │
 │  └──────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
@@ -55,8 +55,8 @@
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    SOLIDSERVER (Edge Hub)                               │
-│                    ${AURORA_SOLIDSERVER_TS_IP} - Ubuntu 24.04                          │
+│                    ATLAS-CORE (Edge Hub)                               │
+│                    ${ATLAS_CORE_TS_IP} - Ubuntu 24.04                          │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌──────────────────────────────────────────────────────────────────┐ │
@@ -66,7 +66,7 @@
 │  └──────────────────────────────────────────────────────────────────┘ │
 │                                                                         │
 │  ┌──────────────────────────────────────────────────────────────────┐ │
-│  │  NUOVO: aurora-data-api                                          │ │
+│  │  NUOVO: atlas-data-api                                          │ │
 │  │  Port: 8001                                                      │ │
 │  │  - REST API per query InfluxDB semplificate                     │ │
 │  │  - Endpoints: /metrics/{device}/{type}                          │ │
@@ -75,16 +75,16 @@
 └─────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    XIAOMI (Voice Interface)                             │
-│                    ${AURORA_XIAOMI_TS_IP} - Android + Termux                    │
+│                    ATLAS-MOBILE (Voice Interface)                             │
+│                    ${ATLAS_MOBILE_TS_IP} - Android + Termux                    │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌──────────────────────────────────────────────────────────────────┐ │
-│  │              aurora-mobile-client.py                             │ │
+│  │              atlas-mobile-client.py                             │ │
 │  │  Python 3.11 in Termux                                           │ │
 │  ├──────────────────────────────────────────────────────────────────┤ │
 │  │  1. Wake Word Detection (PocketSphinx)                           │ │
-│  │     Keyword: "Aurora" o "Hey Aurora"                            │ │
+│  │     Keyword: "Atlas" o "Hey Atlas"                            │ │
 │  │     ↓ attiva registrazione                                       │ │
 │  │                                                                  │ │
 │  │  2. Audio Recorder (PyAudio)                                     │ │
@@ -95,12 +95,12 @@
 │  │     ↓ WAV → Base64                                              │ │
 │  │                                                                  │ │
 │  │  4. MQTT Publisher                                               │ │
-│  │     Topic: voice/xiaomi/audio/request                           │ │
-│  │     Payload: {audio: "base64...", user_id: "xiaomi"}           │ │
+│  │     Topic: voice/atlas-mobile/audio/request                           │ │
+│  │     Payload: {audio: "base64...", user_id: "atlas-mobile"}           │ │
 │  │     QoS: 1, TLS: enabled                                         │ │
 │  │                                                                  │ │
 │  │  5. MQTT Subscriber                                              │ │
-│  │     Topic: voice/xiaomi/audio/response                          │ │
+│  │     Topic: voice/atlas-mobile/audio/response                          │ │
 │  │     ↓ riceve risposta audio + text                              │ │
 │  │                                                                  │ │
 │  │  6. Audio Player (simpleaudio)                                   │ │
@@ -119,23 +119,23 @@
 
 ```
 1. UTENTE PARLA
-   "Aurora, qual è la temperatura del server?"
+   "Atlas, qual è la temperatura del server?"
    
-   ↓ [Xiaomi mic]
+   ↓ [Atlas Mobile mic]
    
 2. WAKE WORD DETECTION
-   Keyword "Aurora" detected → START recording
+   Keyword "Atlas" detected → START recording
    
    ↓ [Record 5s audio]
    
 3. ENCODE & PUBLISH
    audio.wav → base64 → MQTT
-   Topic: voice/xiaomi/audio/request
+   Topic: voice/atlas-mobile/audio/request
    
    ↓ [MQTTS over Tailscale]
    
-4. WORKSTATION RICEVE
-   aurora-voice-engine subscribe
+4. ATLAS-LAB RICEVE
+   atlas-voice-engine subscribe
    
    ↓ [Decode Base64]
    
@@ -153,7 +153,7 @@
    Output JSON:
    {
      "intent": "query_metric",
-     "target": "solidserver",
+     "target": "atlas-core",
      "metric": "temperature",
      "action": "get_current_value"
    }
@@ -164,7 +164,7 @@
    
 7. ACTION EXECUTION
    a) Query InfluxDB via REST API:
-      GET http://${AURORA_SOLIDSERVER_TS_IP}:8001/metrics/solidserver/temperature
+      GET http://${ATLAS_CORE_TS_IP}:8001/metrics/atlas-core/temperature
       
    b) Response: {"value": 42.5, "unit": "celsius", "timestamp": "..."}
    
@@ -194,7 +194,7 @@
    
 10. ENCODE & PUBLISH
     audio.wav → base64 → MQTT
-    Topic: voice/xiaomi/audio/response
+    Topic: voice/atlas-mobile/audio/response
     Payload: {
       "audio": "base64...",
       "text": "La temperatura del server...",
@@ -203,8 +203,8 @@
     
     ↓ [MQTTS over Tailscale]
     
-11. XIAOMI RICEVE
-    aurora-mobile-client subscribe
+11. ATLAS-MOBILE RICEVE
+    atlas-mobile-client subscribe
     
     ↓ [Decode Base64]
     
@@ -224,13 +224,13 @@ TEMPO TOTALE: ~3-4 secondi
 ## 📊 **TOPIC MQTT STRUCTURE**
 
 ```
-aurora/
+atlas/
 ├── voice/
-│   ├── xiaomi/
+│   ├── atlas-mobile/
 │   │   ├── audio/
-│   │   │   ├── request          # Xiaomi → Workstation (audio queries)
-│   │   │   └── response         # Workstation → Xiaomi (audio replies)
-│   │   ├── status               # Xiaomi status (online/offline)
+│   │   │   ├── request          # Atlas Mobile → Atlas Lab (audio queries)
+│   │   │   └── response         # Atlas Lab → Atlas Mobile (audio replies)
+│   │   ├── status               # Atlas Mobile status (online/offline)
 │   │   └── config               # Runtime config updates
 │   │
 │   └── commands/                # Direct commands (non-voice)
@@ -239,13 +239,13 @@ aurora/
 │       └── action/+
 │
 ├── devices/
-│   ├── xiaomi/
+│   ├── atlas-mobile/
 │   │   ├── telemetry            # EXISTING: battery, sensors
 │   │   └── sensors/#
 │   │
-│   ├── ofsc/telemetry           # EXISTING: system metrics
-│   ├── workstation/telemetry    # EXISTING: system metrics
-│   └── solidserver/telemetry    # system metrics + gateway sensors
+│   ├── atlas-field/telemetry           # EXISTING: system metrics
+│   ├── atlas-lab/telemetry    # EXISTING: system metrics
+│   └── atlas-core/telemetry    # system metrics + gateway sensors
 │
 └── system/
     ├── alerts/#                 # System-wide alerts
@@ -257,34 +257,34 @@ aurora/
 
 ## 🗄️ **DATI NECESSARI PER INTEGRAZIONE**
 
-### **A. MQTT Broker (Workstation)**
+### **A. MQTT Broker (Atlas Lab)**
 ```yaml
 Broker:
-  Host: ${AURORA_WORKSTATION_TS_IP}
+  Host: ${ATLAS_LAB_TS_IP}
   Port TLS: 8883
   Port Local: 1883
   
 Certificati esistenti:
   - CA: ~/mqtt-certs/ca.crt
-  - Workstation: ~/mqtt-certs/workstation.{crt,key}
+  - Atlas Lab: ~/mqtt-certs/atlas-lab.{crt,key}
   
 Nuovi certificati da generare:
-  - aurora-engine: per voice-engine container
-  - xiaomi-voice: per client vocale (separato da xiaomi telemetria)
+  - atlas-engine: per voice-engine container
+  - atlas-mobile-voice: per client vocale (separato da atlas-mobile telemetria)
 
 Topics da sottoscrivere (voice-engine):
   - voice/+/audio/request
-  - aurora/commands/#
+  - atlas/commands/#
   
 Topics da pubblicare (voice-engine):
   - voice/+/audio/response
-  - aurora/system/alerts/#
+  - atlas/system/alerts/#
 ```
 
-### **B. InfluxDB (Solidserver)**
+### **B. InfluxDB (Atlas Core)**
 ```yaml
 Database:
-  Host: ${AURORA_SOLIDSERVER_TS_IP}:8086
+  Host: ${ATLAS_CORE_TS_IP}:8086
   Org: ${EDGE_INFLUX_ORG}
   Bucket: telemetry
   Token: ${EDGE_INFLUX_ADMIN_TOKEN}
@@ -295,7 +295,7 @@ Measurements disponibili:
   - disk (fields: used_percent, free, ...)
   - temp (fields: temp, sensor tag)
   - system (fields: load1, load5, load15, uptime)
-  - sensors (device=solidserver: temperature, cpu_usage)
+  - sensors (device=atlas-core: temperature, cpu_usage)
 
 Query patterns comuni:
   1. Current value:
@@ -315,11 +315,11 @@ Query patterns comuni:
      |> max() / min()
 ```
 
-### **C. Docker Networks (Workstation)**
+### **C. Docker Networks (Atlas Lab)**
 ```yaml
 Network: bridge (default)
-  - aurora-voice-engine
-  - aurora-ollama
+  - atlas-voice-engine
+  - atlas-ollama
   - mosquitto (già esistente)
 
 Volumes:
@@ -333,7 +333,7 @@ GPU Access:
   - NVIDIA_VISIBLE_DEVICES: all
 ```
 
-### **D. Xiaomi (Termux)**
+### **D. Atlas Mobile (Termux)**
 ```yaml
 Packages Termux:
   - python (3.11)
@@ -349,18 +349,18 @@ Python packages:
   - base64 (stdlib)
 
 Certificati:
-  - ca.crt: ~/aurora-mobile/certs/
-  - xiaomi-voice.crt
-  - xiaomi-voice.key
+  - ca.crt: ~/atlas-mobile/certs/
+  - atlas-mobile-voice.crt
+  - atlas-mobile-voice.key
 
-Config file: ~/aurora-mobile/config.yaml
+Config file: ~/atlas-mobile/config.yaml
   mqtt:
-    broker: ${AURORA_WORKSTATION_TS_IP}
+    broker: ${ATLAS_LAB_TS_IP}
     port: 8883
-    client_id: ${XIAOMI_VOICE_CLIENT_ID}
-    username: ${XIAOMI_VOICE_USERNAME}
+    client_id: ${ATLAS_MOBILE_VOICE_CLIENT_ID}
+    username: ${ATLAS_MOBILE_VOICE_USERNAME}
   audio:
-    wake_word: aurora
+    wake_word: atlas
     sample_rate: 16000
     channels: 1
     record_duration: 5
@@ -372,35 +372,35 @@ Config file: ~/aurora-mobile/config.yaml
 
 ### **1. QUERY METRICHE**
 ```
-"Aurora, temperatura del server"
-"Aurora, quanta CPU sta usando workstation"
-"Aurora, memoria disponibile su ofsc"
-"Aurora, carico sistema solidserver"
-"Aurora, spazio disco workstation"
-"Aurora, uptime di tutti i device"
+"Atlas, temperatura del server"
+"Atlas, quanta CPU sta usando atlas-lab"
+"Atlas, memoria disponibile su atlas-field"
+"Atlas, carico sistema atlas-core"
+"Atlas, spazio disco atlas-lab"
+"Atlas, uptime di tutti i device"
 ```
 
 ### **2. CONTROLLO DISPOSITIVI**
 ```
-"Aurora, riavvia gateway"
-"Aurora, stato container su solidserver"
-"Aurora, spegni Grafana"
-"Aurora, avvia InfluxDB"
+"Atlas, riavvia gateway"
+"Atlas, stato container su atlas-core"
+"Atlas, spegni Grafana"
+"Atlas, avvia InfluxDB"
 ```
 
 ### **3. INFORMAZIONI SISTEMA**
 ```
-"Aurora, quanti device sono online"
-"Aurora, mostrami gli alert attivi"
-"Aurora, quando è stato l'ultimo backup"
-"Aurora, connessione MQTT funziona"
+"Atlas, quanti device sono online"
+"Atlas, mostrami gli alert attivi"
+"Atlas, quando è stato l'ultimo backup"
+"Atlas, connessione MQTT funziona"
 ```
 
 ### **4. AUTOMAZIONI**
 ```
-"Aurora, notificami se CPU supera 80%"
-"Aurora, crea report giornaliero temperature"
-"Aurora, alert se disco < 10GB"
+"Atlas, notificami se CPU supera 80%"
+"Atlas, crea report giornaliero temperature"
+"Atlas, alert se disco < 10GB"
 ```
 
 ---
@@ -408,19 +408,19 @@ Config file: ~/aurora-mobile/config.yaml
 ## 📦 **FILE STRUCTURE PROGETTO**
 
 ```
-~/aurora-infra-/
-├── workstation/
-│   └── aurora-agent-workstation/
+~/atlas-infra/
+├── atlas-lab/
+│   └── atlas-agent-lab/
 │       ├── docker-compose.yml
 │       ├── telegraf.conf
 │       └── certs/
-├── solidserver/
+├── atlas-core/
 │   ├── edge-hub/
 │   │   ├── docker-compose.yml
 │   │   ├── telegraf.conf.template
 │   │   ├── provisioning/
 │   │   └── render-runtime-config.sh
-│   ├── agent-solidserver/
+│   ├── atlas-agent-core/
 │   │   ├── docker-compose.yml
 │   │   ├── telegraf.conf.template
 │   │   └── render-runtime-config.sh
@@ -429,13 +429,13 @@ Config file: ~/aurora-mobile/config.yaml
 │   │   ├── app.py
 │   │   └── config/
 │   └── mosquitto/
-│       ├── aurora.conf.template
+│       ├── atlas.conf.template
 │       └── render-mosquitto-config.sh
-├── ofsc/
-│   └── aurora-agent-ofsc/            # Telegraf agent (host remoto)
-└── xiaomi/
-    ├── aurora-mobile/                # Telemetry client (Termux)
-    └── aurora-mobile-client/         # Voice client (wake word)
+├── atlas-field/
+│   └── atlas-agent-field/            # Telegraf agent (host remoto)
+└── atlas-mobile/
+    ├── atlas-mobile/                # Telemetry client (Termux)
+    └── atlas-mobile-client/         # Voice client (wake word)
 ```
 
 ---
@@ -470,16 +470,16 @@ Metriche da tracciare:
 - Accuracy Whisper (word error rate)
 - LLM command parsing success rate
 - MQTT message delivery rate
-- GPU utilization (workstation)
+- GPU utilization (atlas-lab)
 - Audio quality metrics
 
 Dashboard Grafana dedicata per voice system.
 
 ---
 
-# 🎙️ **FOICE ASSISTANT AURORA-LIKE**
+# 🎙️ **FOICE ASSISTANT ATLAS-LIKE**
 
-Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
+Trasformiamo lo Atlas Mobile in interfaccia vocale per controllare l'infrastruttura.
 
 ---
 
@@ -487,7 +487,7 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│           WORKSTATION (AI Brain - GPU 4060Ti)            │
+│           ATLAS-LAB (AI Brain - GPU 4060Ti)            │
 │                                                          │
 │  ┌────────────┐  ┌──────────────┐  ┌─────────────────┐ │
 │  │  Whisper   │→ │ LLM Command  │→ │ Action Engine   │ │
@@ -505,7 +505,7 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
          │ MQTT audio                         │ MQTT response
          │                                    ▼
 ┌────────┴────────────────────────────────────────────────┐
-│              XIAOMI (Voice Interface)                   │
+│              ATLAS-MOBILE (Voice Interface)                   │
 │                                                          │
 │  ┌─────────┐  ┌──────────┐  ┌──────────────────────┐  │
 │  │   Mic   │→ │  Record  │→ │ MQTT Publish Audio   │  │
@@ -522,13 +522,13 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 
 ## 📋 **PIANO IMPLEMENTAZIONE**
 
-### **STEP 1: Workstation - Setup AI Stack** (30 min)
+### **STEP 1: Atlas Lab - Setup AI Stack** (30 min)
 - Whisper per Speech-to-Text (GPU accelerated)
 - Ollama con Llama 3.2 per command parsing
 - Piper TTS per risposte vocali
 - MQTT bridge per audio streaming
 
-### **STEP 2: Xiaomi - Voice Client** (20 min)
+### **STEP 2: Atlas Mobile - Voice Client** (20 min)
 - Termux app con Python
 - PyAudio per registrazione
 - MQTT client per pub/sub audio
@@ -537,9 +537,9 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 ### **STEP 3: Command Engine** (30 min)
 - Parser comandi vocali → azioni MQTT
 - Esempi:
-  - "Aurora, temperatura server?" → query InfluxDB
-  - "Aurora, riavvia gateway" → docker restart
-  - "Aurora, CPU workstation?" → real-time stats
+  - "Atlas, temperatura server?" → query InfluxDB
+  - "Atlas, riavvia gateway" → docker restart
+  - "Atlas, CPU atlas-lab?" → real-time stats
 
 ---
 
@@ -547,7 +547,7 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 
 ---
 
-## 🖥️ **WORKSTATION (${AURORA_WORKSTATION_TS_IP})**
+## 🖥️ **ATLAS-LAB (${ATLAS_LAB_TS_IP})**
 
 ### **Sistema**
 - **OS**: Ubuntu (versione da verificare)
@@ -564,28 +564,28 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 │   ├── ca.crt                           # Certificate Authority (2004 bytes)
 │   ├── ca.key                           # CA private key
 │   ├── ca.srl                           # CA serial
-│   ├── broker.crt                       # Broker cert (NON USATO - broker su solidserver)
+│   ├── broker.crt                       # Broker cert (NON USATO - broker su atlas-core)
 │   ├── broker.key                       # Broker key (NON USATO)
-│   ├── ofsc.crt                         # Client cert per laptop ofsc (1651 bytes)
-│   ├── ofsc.key                         # Client key per ofsc (1704 bytes)
-│   ├── ofsc.csr                         # Certificate signing request
-│   ├── workstation.crt                  # Client cert per workstation (1717 bytes)
-│   ├── workstation.key                  # Client key per workstation (1704 bytes)
-│   ├── workstation.csr                  # CSR workstation
-│   ├── solidserver.crt             # Client cert per solidserver (1651 bytes)
-│   ├── solidserver.key             # Client key (1704 bytes)
-│   └── solidserver.csr             # CSR solidserver
+│   ├── atlas-field.crt                         # Client cert per laptop atlas-field (1651 bytes)
+│   ├── atlas-field.key                         # Client key per atlas-field (1704 bytes)
+│   ├── atlas-field.csr                         # Certificate signing request
+│   ├── atlas-lab.crt                  # Client cert per atlas-lab (1717 bytes)
+│   ├── atlas-lab.key                  # Client key per atlas-lab (1704 bytes)
+│   ├── atlas-lab.csr                  # CSR atlas-lab
+│   ├── atlas-core.crt             # Client cert per atlas-core (1651 bytes)
+│   ├── atlas-core.key             # Client key (1704 bytes)
+│   └── atlas-core.csr             # CSR atlas-core
 │
-├── aurora-agent-workstation/            # Telegraf Agent per workstation
+├── atlas-agent-lab/            # Telegraf Agent per atlas-lab
 │   ├── docker-compose.yml               # Container config
 │   │   services:
 │   │     - telegraf (image: telegraf:1.29-alpine)
-│   │       container_name: aurora-agent-workstation
+│   │       container_name: atlas-agent-lab
 │   │       network_mode: host
 │   │
 │   ├── telegraf.conf                    # Telegraf configuration
 │   │   [agent]
-│   │     hostname: ${WORKSTATION_AGENT_TELEGRAF_HOSTNAME}
+│   │     hostname: ${ATLAS_LAB_AGENT_TELEGRAF_HOSTNAME}
 │   │     interval: 10s
 │   │   [[inputs.cpu]]
 │   │   [[inputs.mem]]
@@ -593,42 +593,42 @@ Trasformiamo lo Xiaomi in interfaccia vocale per controllare l'infrastruttura.
 │   │   [[inputs.system]]
 │   │   [[inputs.temp]]
 │   │   [[outputs.mqtt]]
-│   │     servers: ${WORKSTATION_AGENT_MQTT_URL}
-│   │     topic: devices/${WORKSTATION_AGENT_DEVICE_ID}/telemetry
+│   │     servers: ${ATLAS_LAB_AGENT_MQTT_URL}
+│   │     topic: devices/${ATLAS_LAB_AGENT_DEVICE_ID}/telemetry
 │   │     data_format: influx
 │   │     tls_ca: /certs/ca.crt
-│   │     tls_cert: /certs/workstation.crt
-│   │     tls_key: /certs/workstation.key
+│   │     tls_cert: /certs/atlas-lab.crt
+│   │     tls_key: /certs/atlas-lab.key
 │   │
 │   ├── telegraf.conf.bak                # Backup config
 │   └── certs/                           # Certificati montati in container
 │       ├── ca.crt
-│       ├── workstation.crt
-│       └── workstation.key
+│       ├── atlas-lab.crt
+│       └── atlas-lab.key
 │
-└── (MQTT Broker rimosso - ora su solidserver)
+└── (MQTT Broker rimosso - ora su atlas-core)
 
 ```
 
 ### **Container Docker Attivi**
 ```bash
 CONTAINER ID   NAME                        STATUS
-xxxxxxxxxx     aurora-agent-workstation    Up (running)
+xxxxxxxxxx     atlas-agent-lab    Up (running)
 ```
 
 ### **Network Info**
 ```yaml
-Tailscale IP: ${AURORA_WORKSTATION_TS_IP}
-Hostname: workstation
+Tailscale IP: ${ATLAS_LAB_TS_IP}
+Hostname: atlas-lab
 Network: Tailscale mesh
 ```
 
 ### **Servizi Attivi**
-- Telegraf agent (porta pubblicazione MQTT TLS a solidserver)
+- Telegraf agent (porta pubblicazione MQTT TLS a atlas-core)
 
 ---
 
-## 🖥️ **SOLIDSERVER (${AURORA_SOLIDSERVER_TS_IP})**
+## 🖥️ **ATLAS-CORE (${ATLAS_CORE_TS_IP})**
 
 ### **Sistema**
 - **OS**: Ubuntu 24.04
@@ -640,15 +640,15 @@ Network: Tailscale mesh
 ```
 /home/leoz/
 │
-├── aurora-edge-hub/                     # Hub centrale IoT
+├── atlas-edge-hub/                     # Hub centrale IoT
 │   ├── docker-compose.yml               # Orchestrazione stack
 │   │   version: '3.8'
 │   │   networks:
-│   │     aurora-net:
+│   │     atlas-net:
 │   │   services:
 │   │     mosquitto:                     # MQTT Broker
 │   │       image: eclipse-mosquitto:2.0
-│   │       container_name: aurora-mosquitto
+│   │       container_name: atlas-mosquitto
 │   │       ports:
 │   │         - "1883:1883"              # Non-TLS (local only)
 │   │         - "8883:8883"              # TLS (external)
@@ -661,14 +661,14 @@ Network: Tailscale mesh
 │   │
 │   │     telegraf:                      # Telegraf Centrale
 │   │       image: telegraf:1.29-alpine
-│   │       container_name: aurora-telegraf
+│   │       container_name: atlas-telegraf
 │   │       volumes:
 │   │         - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
 │   │       network_mode: host
 │   │
 │   │     influxdb:                      # Time-Series Database
 │   │       image: influxdb:2.7-alpine
-│   │       container_name: aurora-influxdb
+│   │       container_name: atlas-influxdb
 │   │       ports:
 │   │         - "${EDGE_INFLUX_BIND_ADDR}:${EDGE_INFLUX_PORT_HOST}:8086"
 │   │       volumes:
@@ -684,7 +684,7 @@ Network: Tailscale mesh
 │   │
 │   │     grafana:                       # Dashboard & Visualization
 │   │       image: grafana/grafana:10.2.3
-│   │       container_name: aurora-grafana
+│   │       container_name: atlas-grafana
 │   │       ports:
 │   │         - "${EDGE_GRAFANA_BIND_ADDR}:${EDGE_GRAFANA_PORT_HOST}:3000"
 │   │       volumes:
@@ -716,7 +716,7 @@ Network: Tailscale mesh
 │   │
 │   └── README.md
 │
-├── iot-gateway/                         # Gateway locale solidserver
+├── iot-gateway/                         # Gateway locale atlas-core
 │   ├── docker-compose.yml
 │   │   services:
 │   │     iot-gateway:
@@ -761,27 +761,27 @@ Network: Tailscale mesh
 │   ├── certs/
 │   └── README.md
 │
-├── aurora-agent-solidserver/            # Telegraf Agent solidserver
+├── atlas-agent-core/            # Telegraf Agent atlas-core
 │   ├── docker-compose.yml
 │   │   services:
 │   │     telegraf:
 │   │       image: telegraf:1.29-alpine
-│   │       container_name: aurora-agent-solidserver
+│   │       container_name: atlas-agent-core
 │   │       network_mode: host
 │   │
 │   ├── telegraf.conf
 │   │   [agent]
-│   │     hostname: ${SOLIDSERVER_AGENT_TELEGRAF_HOSTNAME}
+│   │     hostname: ${ATLAS_CORE_AGENT_TELEGRAF_HOSTNAME}
 │   │   [[outputs.mqtt]]
-│   │     servers: ${SOLIDSERVER_AGENT_MQTT_URL}
-│   │     topic: devices/${SOLIDSERVER_AGENT_DEVICE_ID}/telemetry
+│   │     servers: ${ATLAS_CORE_AGENT_MQTT_URL}
+│   │     topic: devices/${ATLAS_CORE_AGENT_DEVICE_ID}/telemetry
 │   │     data_format: influx
 │   │
 │   ├── telegraf.conf.bak
 │   └── certs/
 │       ├── ca.crt
-│       ├── solidserver.crt
-│       └── solidserver.key
+│       ├── atlas-core.crt
+│       └── atlas-core.key
 │
 └── (altri progetti esistenti)
 
@@ -799,7 +799,7 @@ Network: Tailscale mesh
 │   include_dir /etc/mosquitto/conf.d
 │
 ├── conf.d/
-│   └── aurora.conf                      # Aurora-specific config
+│   └── atlas.conf                      # Atlas-specific config
 │       # Listener non-TLS (local only)
 │       listener ${MOSQUITTO_PLAIN_PORT} ${MOSQUITTO_PLAIN_BIND_ADDR}
 │       allow_anonymous true
@@ -815,7 +815,7 @@ Network: Tailscale mesh
 │
 └── certs/
     ├── ca.crt                           # CA certificate
-    ├── broker.crt                       # Broker cert (CN=${AURORA_SOLIDSERVER_TS_IP})
+    ├── broker.crt                       # Broker cert (CN=${ATLAS_CORE_TS_IP})
     └── broker.key                       # Broker private key
     Permissions: mosquitto:mosquitto, 644 for .crt, 600 for .key
 
@@ -826,12 +826,12 @@ Network: Tailscale mesh
 ### **Container Docker Attivi**
 ```bash
 CONTAINER ID   NAME                        STATUS
-xxxxxxxxxx     aurora-mosquitto            Up
-xxxxxxxxxx     aurora-telegraf             Up
-xxxxxxxxxx     aurora-influxdb             Up (port 8086)
-xxxxxxxxxx     aurora-grafana              Up (port 3001)
+xxxxxxxxxx     atlas-mosquitto            Up
+xxxxxxxxxx     atlas-telegraf             Up
+xxxxxxxxxx     atlas-influxdb             Up (port 8086)
+xxxxxxxxxx     atlas-grafana              Up (port 3001)
 xxxxxxxxxx     iot-gateway                 Up
-xxxxxxxxxx     aurora-agent-solidserver    Up
+xxxxxxxxxx     atlas-agent-core    Up
 ```
 
 ### **InfluxDB Data**
@@ -852,20 +852,20 @@ Measurements:
   - disk (from all agents)
   - system (from all agents)
   - temp (from all agents)
-  - sensors (from gateway solidserver)
-  - mobile_battery (from xiaomi)
-  - mobile_telemetry (from xiaomi)
+  - sensors (from gateway atlas-core)
+  - mobile_battery (from atlas-mobile)
+  - mobile_telemetry (from atlas-mobile)
 
 Devices:
-  - ofsc
-  - workstation
-  - solidserver
-  - mobile-xiaomi
+  - atlas-field
+  - atlas-lab
+  - atlas-core
+  - atlas-mobile
 ```
 
 ### **Grafana**
 ```yaml
-URL: http://${AURORA_SOLIDSERVER_TS_IP}:3001 (MagicDNS: http://solidserver:3001/)
+URL: http://${ATLAS_CORE_TS_IP}:3001 (MagicDNS: http://atlas-core:3001/)
 Credentials:
   - Username: ${EDGE_GRAFANA_ADMIN_USER}
   - Password: ${EDGE_GRAFANA_ADMIN_PASSWORD}
@@ -878,14 +878,14 @@ Data Sources:
     Bucket: ${EDGE_INFLUX_BUCKET}
 
 Dashboards:
-  - Aurora Overview
-  - Aurora Device Detail
+  - Atlas Overview
+  - Atlas Device Detail
 ```
 
 ### **Network Info**
 ```yaml
-Tailscale IP: ${AURORA_SOLIDSERVER_TS_IP}
-Hostname: solidserver
+Tailscale IP: ${ATLAS_CORE_TS_IP}
+Hostname: atlas-core
 Services:
   - Mosquitto: 1883 (local only), 8883 (TLS all interfaces)
   - InfluxDB: 8086
@@ -894,7 +894,7 @@ Services:
 
 ---
 
-## 💻 **LAPTOP OFSC (${AURORA_OFSC_TS_IP})**
+## 💻 **LAPTOP ATLAS-FIELD (${ATLAS_FIELD_TS_IP})**
 
 ### **Sistema**
 - **OS**: Ubuntu (fascia bassa)
@@ -905,18 +905,18 @@ Services:
 ```
 /home/user/
 │
-└── aurora-agent-ofsc/                   # Telegraf Agent
+└── atlas-agent-field/                   # Telegraf Agent
     ├── docker-compose.yml
     │   version: '3.8'
     │   services:
     │     telegraf:
     │       image: telegraf:1.29-alpine
-    │       container_name: aurora-agent-ofsc
+    │       container_name: atlas-agent-field
     │       network_mode: host
     │
     ├── telegraf.conf
     │   [agent]
-    │     hostname: ${OFSC_AGENT_TELEGRAF_HOSTNAME}
+    │     hostname: ${ATLAS_FIELD_AGENT_TELEGRAF_HOSTNAME}
     │     interval: 10s
     │   [[inputs.cpu]]
     │   [[inputs.mem]]
@@ -924,25 +924,25 @@ Services:
     │   [[inputs.system]]
     │   [[inputs.temp]]
     │   [[outputs.mqtt]]
-    │     servers: ${OFSC_AGENT_MQTT_URL}
-    │     topic: devices/${OFSC_AGENT_DEVICE_ID}/telemetry
-    │     client_id: ${OFSC_AGENT_DEVICE_ID}-telegraf
+    │     servers: ${ATLAS_FIELD_AGENT_MQTT_URL}
+    │     topic: devices/${ATLAS_FIELD_AGENT_DEVICE_ID}/telemetry
+    │     client_id: ${ATLAS_FIELD_AGENT_DEVICE_ID}-telegraf
     │     data_format: influx
     │     tls_ca: /certs/ca.crt
-    │     tls_cert: /certs/ofsc.crt
-    │     tls_key: /certs/ofsc.key
+    │     tls_cert: /certs/atlas-field.crt
+    │     tls_key: /certs/atlas-field.key
     │
     ├── telegraf.conf.bak
     └── certs/
         ├── ca.crt                       # 2004 bytes
-        ├── ofsc.crt                     # 1651 bytes
-        └── ofsc.key                     # 1704 bytes
+        ├── atlas-field.crt                     # 1651 bytes
+        └── atlas-field.key                     # 1704 bytes
 ```
 
 ### **Container Docker Attivi**
 ```bash
 CONTAINER ID   NAME                STATUS
-xxxxxxxxxx     aurora-agent-ofsc   Up
+xxxxxxxxxx     atlas-agent-field   Up
 ```
 
 ### **Docker Setup**
@@ -951,13 +951,13 @@ xxxxxxxxxx     aurora-agent-ofsc   Up
 
 ### **Network Info**
 ```yaml
-Tailscale IP: ${AURORA_OFSC_TS_IP}
-Hostname: ofsc
+Tailscale IP: ${ATLAS_FIELD_TS_IP}
+Hostname: atlas-field
 ```
 
 ---
 
-## 📱 **XIAOMI (${AURORA_XIAOMI_TS_IP})**
+## 📱 **ATLAS-MOBILE (${ATLAS_MOBILE_TS_IP})**
 
 ### **Sistema**
 - **OS**: Android + Termux
@@ -968,23 +968,23 @@ Hostname: ofsc
 ```
 /data/data/com.termux/files/home/
 │
-└── aurora-mobile/                       # Client MQTT telemetria mobile
+└── atlas-mobile/                       # Client MQTT telemetria mobile
     ├── config.yaml
     │   mqtt:
-    │     broker: ${XIAOMI_MQTT_BROKER_HOST}
-    │     port: ${XIAOMI_MQTT_BROKER_PORT}
-    │     client_id: ${XIAOMI_MQTT_CLIENT_ID}
-    │     username: ${XIAOMI_MQTT_USERNAME}
-    │     password: ${XIAOMI_MQTT_PASSWORD}
+    │     broker: ${ATLAS_MOBILE_MQTT_BROKER_HOST}
+    │     port: ${ATLAS_MOBILE_MQTT_BROKER_PORT}
+    │     client_id: ${ATLAS_MOBILE_MQTT_CLIENT_ID}
+    │     username: ${ATLAS_MOBILE_MQTT_USERNAME}
+    │     password: ${ATLAS_MOBILE_MQTT_PASSWORD}
     │     topics:
-    │       telemetry: ${XIAOMI_MQTT_TELEMETRY_TOPIC}
-    │       commands: ${XIAOMI_MQTT_COMMANDS_TOPIC}
+    │       telemetry: ${ATLAS_MOBILE_MQTT_TELEMETRY_TOPIC}
+    │       commands: ${ATLAS_MOBILE_MQTT_COMMANDS_TOPIC}
     │       sensors:
-    │         battery: ${XIAOMI_MQTT_SENSORS_BATTERY_TOPIC}
-    │         location: ${XIAOMI_MQTT_SENSORS_LOCATION_TOPIC}
-    │         sensor: ${XIAOMI_MQTT_SENSORS_SENSOR_TOPIC}
+    │         battery: ${ATLAS_MOBILE_MQTT_SENSORS_BATTERY_TOPIC}
+    │         location: ${ATLAS_MOBILE_MQTT_SENSORS_LOCATION_TOPIC}
+    │         sensor: ${ATLAS_MOBILE_MQTT_SENSORS_SENSOR_TOPIC}
     │   sensors:
-    │     interval: ${XIAOMI_SENSORS_INTERVAL}
+    │     interval: ${ATLAS_MOBILE_SENSORS_INTERVAL}
     │   logging:
     │     level: INFO
     │
@@ -993,12 +993,12 @@ Hostname: ofsc
     │   - Pubblica Influx line protocol:
     │     - mobile_battery (sensors/battery)
     │     - mobile_telemetry (telemetry)
-    │   - Sottoscrive ${XIAOMI_MQTT_COMMANDS_TOPIC}
+    │   - Sottoscrive ${ATLAS_MOBILE_MQTT_COMMANDS_TOPIC}
     │
     └── certs/
         ├── ca.crt
-        ├── mobile.crt                   # Certificato client
-        └── mobile.key
+        ├── atlas-mobile.crt             # Certificato client
+        └── atlas-mobile.key
 ```
 
 ### **Termux Packages Installati**
@@ -1016,18 +1016,18 @@ Hostname: ofsc
 
 ### **Stato Client**
 ```yaml
-Status: Gestito da Termux Boot (start-aurora.sh)
+Status: Gestito da Termux Boot (start-atlas.sh)
 MQTT Connection:
-  - Broker: ${XIAOMI_MQTT_BROKER_HOST}:${XIAOMI_MQTT_BROKER_PORT}
+  - Broker: ${ATLAS_MOBILE_MQTT_BROKER_HOST}:${ATLAS_MOBILE_MQTT_BROKER_PORT}
   - TLS: enabled
-  - Authentication: X.509 certificate (CN=mobile-xiaomi)
-  - Connected: Yes (log mosquitto mostra "New client connected from ${AURORA_XIAOMI_TS_IP}")
+  - Authentication: X.509 certificate (CN=atlas-mobile)
+  - Connected: Yes (log mosquitto mostra "New client connected from ${ATLAS_MOBILE_TS_IP}")
 ```
 
 ### **Network Info**
 ```yaml
-Tailscale IP: ${AURORA_XIAOMI_TS_IP}
-Hostname: xiaomi (o simile)
+Tailscale IP: ${ATLAS_MOBILE_TS_IP}
+Hostname: atlas-mobile (o simile)
 Connection: Mobile (LTE/WiFi via Tailscale)
 ```
 
@@ -1037,45 +1037,45 @@ Connection: Mobile (LTE/WiFi via Tailscale)
 
 ### **Certificate Authority (CA)**
 ```yaml
-Location: workstation:~/mqtt-certs/ca.crt
-  - Common Name: Aurora Lab CA
+Location: atlas-lab:~/mqtt-certs/ca.crt
+  - Common Name: Atlas Lab CA
   - Valid: 365 days
   - Used by: tutti i client per verificare broker e peers
 ```
 
 ### **Broker Certificate**
 ```yaml
-Location: solidserver:/etc/mosquitto/certs/broker.crt
-  - Common Name: ${AURORA_SOLIDSERVER_TS_IP}
-  - SAN: IP:${AURORA_SOLIDSERVER_TS_IP}
+Location: atlas-core:/etc/mosquitto/certs/broker.crt
+  - Common Name: ${ATLAS_CORE_TS_IP}
+  - SAN: IP:${ATLAS_CORE_TS_IP}
   - Used by: Mosquitto broker su porta 8883
 ```
 
 ### **Client Certificates**
 ```yaml
-1. ofsc
-   Location: ofsc:~/aurora-agent-ofsc/certs/ofsc.crt
-   CN: ofsc
-   Used by: Telegraf agent ofsc
-   MQTT username: ofsc (from CN)
+1. atlas-field
+   Location: atlas-field:~/atlas-agent-field/certs/atlas-field.crt
+   CN: atlas-field
+   Used by: Telegraf agent atlas-field
+   MQTT username: atlas-field (from CN)
 
-2. workstation
-   Location: workstation:~/aurora-agent-workstation/certs/workstation.crt
-   CN: workstation
-   Used by: Telegraf agent workstation
-   MQTT username: workstation
+2. atlas-lab
+   Location: atlas-lab:~/atlas-agent-lab/certs/atlas-lab.crt
+   CN: atlas-lab
+   Used by: Telegraf agent atlas-lab
+   MQTT username: atlas-lab
 
-3. solidserver
-   Location: solidserver:~/aurora-agent-solidserver/certs/solidserver.crt
-   CN: solidserver
-   Used by: Telegraf agent solidserver
-   MQTT username: solidserver
+3. atlas-core
+   Location: atlas-core:~/atlas-agent-core/certs/atlas-core.crt
+   CN: atlas-core
+   Used by: Telegraf agent atlas-core
+   MQTT username: atlas-core
 
-4. mobile (xiaomi)
-   Location: xiaomi:~/aurora-mobile/certs/mobile.crt
-   CN: mobile-xiaomi
-   Used by: Python MQTT client su Xiaomi
-   MQTT username: mobile-xiaomi
+4. mobile (atlas-mobile)
+   Location: atlas-mobile:~/atlas-mobile/certs/atlas-mobile.crt
+   CN: atlas-mobile
+   Used by: Python MQTT client su Atlas Mobile
+   MQTT username: atlas-mobile
 ```
 
 ---
@@ -1084,24 +1084,24 @@ Location: solidserver:/etc/mosquitto/certs/broker.crt
 
 ```
 devices/
-├── ofsc/
+├── atlas-field/
 │   └── telemetry                        # Line Protocol (Telegraf)
 │       Frequency: 10s
 │       Measurements: cpu, mem, disk, system, temp
 │
-├── workstation/
+├── atlas-lab/
 │   └── telemetry                        # Line Protocol (Telegraf)
 │       Frequency: 10s
 │       Measurements: cpu, mem, disk, system, temp
 │
-├── solidserver/
+├── atlas-core/
 │   ├── telemetry                        # Line Protocol (Telegraf + Gateway)
 │   │   Frequency: 6-10s
 │   │   Measurements: cpu, mem, disk, system, temp, sensors
 │   └── commands                         # Commands to gateway
 │       Payload: {"action": "set_interval", "value": X}
 │
-└── mobile-xiaomi/
+└── atlas-mobile/
     ├── sensors/
     │   └── battery                      # Line Protocol (mobile_battery)
     │       Frequency: 10s
@@ -1124,11 +1124,11 @@ devices/
 ```
 Tailscale Mesh Network (100.x.x.x/10)
 │
-├── ${AURORA_WORKSTATION_TS_IP} (workstation)
+├── ${ATLAS_LAB_TS_IP} (atlas-lab)
 │   Services: Telegraf Agent
-│   Outbound: MQTT TLS → solidserver:8883
+│   Outbound: MQTT TLS → atlas-core:8883
 │
-├── ${AURORA_SOLIDSERVER_TS_IP} (solidserver)
+├── ${ATLAS_CORE_TS_IP} (atlas-core)
 │   Services:
 │     - Mosquitto MQTT Broker (1883 local, 8883 TLS)
 │     - InfluxDB (8086)
@@ -1141,30 +1141,30 @@ Tailscale Mesh Network (100.x.x.x/10)
 │     - HTTP 8086 ← Grafana
 │     - HTTP 3001 ← users
 │
-├── ${AURORA_OFSC_TS_IP} (ofsc)
+├── ${ATLAS_FIELD_TS_IP} (atlas-field)
 │   Services: Telegraf Agent
-│   Outbound: MQTT TLS → solidserver:8883
+│   Outbound: MQTT TLS → atlas-core:8883
 │
-└── ${AURORA_XIAOMI_TS_IP} (xiaomi)
+└── ${ATLAS_MOBILE_TS_IP} (atlas-mobile)
     Services: Python MQTT Client
-    Outbound: MQTT TLS → solidserver:8883
+    Outbound: MQTT TLS → atlas-core:8883
 ```
 
 ---
 
 ## 📦 **VOLUMI DOCKER**
 
-### **Solidserver**
+### **Atlas Core**
 ```yaml
 Volumes:
-  - influxdb-data: /var/lib/docker/volumes/aurora-edge-hub_influxdb-data
+  - influxdb-data: /var/lib/docker/volumes/atlas-edge-hub_influxdb-data
     Size: ~varios MB (time-series data)
     Contains: InfluxDB bucket data
   
-  - influxdb-config: /var/lib/docker/volumes/aurora-edge-hub_influxdb-config
+  - influxdb-config: /var/lib/docker/volumes/atlas-edge-hub_influxdb-config
     Contains: InfluxDB configuration
   
-  - grafana-data: /var/lib/docker/volumes/aurora-edge-hub_grafana-data
+  - grafana-data: /var/lib/docker/volumes/atlas-edge-hub_grafana-data
     Contains: Grafana dashboards, users, datasources
 ```
 
@@ -1172,50 +1172,50 @@ Volumes:
 
 ## 🔍 **COMANDI UTILI PER VERIFICA**
 
-### **Workstation**
+### **Atlas Lab**
 ```bash
 # Verifica agent
-sudo docker ps | grep workstation
-sudo docker logs aurora-agent-workstation --tail=20
+sudo docker ps | grep atlas-lab
+sudo docker logs atlas-agent-lab --tail=20
 
 # Verifica certificati
 ls -lh ~/mqtt-certs/
-openssl x509 -in ~/mqtt-certs/workstation.crt -text -noout
+openssl x509 -in ~/mqtt-certs/atlas-lab.crt -text -noout
 ```
 
-### **Solidserver**
+### **Atlas Core**
 ```bash
 # Verifica stack
-cd ~/aurora-edge-hub
+cd ~/atlas-edge-hub
 docker compose ps
 docker compose logs -f
 
 # Verifica Mosquitto
 sudo tail -f /var/log/mosquitto/mosquitto.log
-mosquitto_sub -h ${AURORA_SOLIDSERVER_TS_IP} -p 1883 -t "devices/#" -v
+mosquitto_sub -h ${ATLAS_CORE_TS_IP} -p 1883 -t "devices/#" -v
 
 # Verifica InfluxDB
-docker exec -it aurora-influxdb influx bucket list --org ${EDGE_INFLUX_ORG}
-docker exec -it aurora-influxdb influx query 'from(bucket:"telemetry") |> range(start:-5m) |> limit(n:10)' --org ${EDGE_INFLUX_ORG} --token ${EDGE_INFLUX_ADMIN_TOKEN}
+docker exec -it atlas-influxdb influx bucket list --org ${EDGE_INFLUX_ORG}
+docker exec -it atlas-influxdb influx query 'from(bucket:"telemetry") |> range(start:-5m) |> limit(n:10)' --org ${EDGE_INFLUX_ORG} --token ${EDGE_INFLUX_ADMIN_TOKEN}
 
 # Verifica certificati broker
 ls -lh /etc/mosquitto/certs/
 sudo openssl x509 -in /etc/mosquitto/certs/broker.crt -text -noout
 ```
 
-### **OFSC**
+### **ATLAS-FIELD**
 ```bash
 # Verifica agent
-docker ps | grep ofsc
-docker logs aurora-agent-ofsc --tail=20
+docker ps | grep atlas-field
+docker logs atlas-agent-field --tail=20
 ```
 
-### **Xiaomi (Termux)**
+### **Atlas Mobile (Termux)**
 ```bash
 # Verifica processo
 ps aux | grep mqtt
 # Verifica log (se loggato)
-tail -f ~/aurora-mobile/mqtt.log
+tail -f ~/atlas-mobile/mqtt.log
 ```
 
 ---

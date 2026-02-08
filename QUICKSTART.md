@@ -1,4 +1,4 @@
-# Aurora Infra Quickstart
+# Atlas Research Infrastructure Quickstart
 
 Fast path to get the stack running and verified.
 
@@ -7,43 +7,43 @@ Fast path to get the stack running and verified.
 2. Fill in Tailscale IPs, tokens, and passwords.
 3. Link into each component folder: `ln -s ~/.env ./.env`
 
-## 2) solidserver (core services)
+## 2) atlas-core (core services)
 ### Mosquitto (TLS)
 ```bash
-cd /home/leoz/aurora-infra-/solidserver/mosquitto
+cd /home/leoz/atlas-infra/atlas-core/mosquitto
 ENV_FILE=~/.env ./render-mosquitto-config.sh
-sudo cp aurora.conf /etc/mosquitto/conf.d/aurora.conf
+sudo cp atlas.conf /etc/mosquitto/conf.d/atlas.conf
 sudo systemctl restart mosquitto
 ```
 
 ### Edge hub (InfluxDB + Grafana + Telegraf collector)
 ```bash
-cd /home/leoz/edge-hub
+cd /home/leoz/atlas-infra/atlas-core/edge-hub
 ENV_FILE=~/.env ./render-runtime-config.sh
 docker compose up -d
 ```
 
-### solidserver agent (local metrics)
+### atlas-core agent (local metrics)
 ```bash
-cd /home/leoz/aurora-infra-/solidserver/agent-solidserver
+cd /home/leoz/atlas-infra/atlas-core/atlas-agent-core
 ENV_FILE=~/.env ./render-runtime-config.sh
 docker compose up -d
 ```
 
-## 3) workstation / ofsc (agents)
+## 3) atlas-lab / atlas-field (agents)
 ```bash
 # Place certs in ./certs (ca.crt, <device>.crt, <device>.key)
-cd /home/leoz/aurora-infra-/workstation/aurora-agent-workstation
+cd /home/leoz/atlas-infra/atlas-lab/atlas-agent-lab
 sudo docker compose up -d
 
-cd /home/leoz/aurora-infra-/ofsc/aurora-agent-ofsc
+cd /home/leoz/atlas-infra/atlas-field/atlas-agent-field
 docker compose up -d
 ```
 
-## 4) xiaomi (Termux client)
+## 4) atlas-mobile (Termux client)
 ```bash
 # On the phone
-cd ~/aurora-mobile
+cd ~/atlas-mobile
 python mobile_sensors.py
 ```
 
@@ -61,10 +61,10 @@ docker exec edge-hub-influxdb-1 influx query --org "$EDGE_INFLUX_ORG" --token "$
 ```
 
 ### Grafana
-- URL: `http://solidserver:3001/`
-- Dashboards: "Aurora Overview", "Aurora Device Detail"
+- URL: `http://atlas-core:3001/`
+- Dashboards: "Atlas Overview", "Atlas Device Detail"
 
 ## Common fixes
 - No data in Grafana: check `edge-hub-telegraf-1` logs and MQTT traffic.
 - TLS errors: verify cert names and permissions (`chmod 644 *.crt *.key`).
-- Xiaomi CPU/uptime missing: Android restricts `/proc`; client uses `top`/`uptime` fallback.
+- Atlas mobile CPU/uptime missing: Android restricts `/proc`; client uses `top`/`uptime` fallback.

@@ -1,0 +1,15 @@
+services:
+  telegraf:
+    image: telegraf:1.29-alpine
+    container_name: atlas-agent-core
+    restart: unless-stopped
+    env_file:
+      - ./.env
+
+    # ⚠️ Punto critico: host network. Va bene per metriche host,
+    # ma riduce isolamento. Miglioramento futuro: bridge + mount /proc,/sys RO.
+    network_mode: host
+
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./certs:/certs:ro

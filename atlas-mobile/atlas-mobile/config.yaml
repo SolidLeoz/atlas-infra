@@ -1,0 +1,24 @@
+mqtt:
+  broker: "${ATLAS_MOBILE_MQTT_BROKER_HOST}"
+  port: ${ATLAS_MOBILE_MQTT_BROKER_PORT}
+  client_id: "${ATLAS_MOBILE_MQTT_CLIENT_ID}"
+  username: "${ATLAS_MOBILE_MQTT_USERNAME}"
+  password: "${ATLAS_MOBILE_MQTT_PASSWORD}"
+  tls:
+    enabled: true
+    ca_cert: "certs/ca.crt"
+    client_cert: "certs/atlas-mobile.crt"
+    client_key: "certs/atlas-mobile.key"
+  topics:
+    telemetry: "${ATLAS_MOBILE_MQTT_TELEMETRY_TOPIC}"
+    commands: "${ATLAS_MOBILE_MQTT_COMMANDS_TOPIC}"
+    sensors:
+      battery: "${ATLAS_MOBILE_MQTT_SENSORS_BATTERY_TOPIC}"
+      location: "${ATLAS_MOBILE_MQTT_SENSORS_LOCATION_TOPIC}"
+      sensor: "${ATLAS_MOBILE_MQTT_SENSORS_SENSOR_TOPIC}"
+
+sensors:
+  interval: 10  # seconds between readings
+
+logging:
+  level: "INFO"

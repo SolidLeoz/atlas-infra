@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: atlas-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./.env
+    environment:
+      - GF_SECURITY_ADMIN_USER=${ATLAS_FIELD_GRAFANA_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${ATLAS_FIELD_GRAFANA_ADMIN_PASSWORD}
+      - GF_INSTALL_PLUGINS=
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning
+    networks:
+      - atlas-net
+
+networks:
+  atlas-net:
+    driver: bridge
+
+volumes:
+  grafana-data:
