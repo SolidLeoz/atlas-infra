@@ -877,18 +877,8 @@ Data Sources:
     Bucket: ${EDGE_INFLUX_BUCKET}
 
 Dashboards:
-  - 🏠 Aurora Lab - Infrastructure Monitoring
-    Panels:
-      1. Current CPU Usage (Stat)
-      2. Current Memory Usage (Stat)
-      3. Average Disk Usage (Stat)
-      4. System Uptime (Stat)
-      5. CPU Usage by Device (Time series)
-      6. Memory Usage by Device (Time series)
-      7. Average Temperature by Device (Time series)
-      8. System Load (Time series)
-      9. Gateway Sensors (Time series)
-      10. Device Status Overview (Table)
+  - Aurora Overview
+  - Aurora Device Detail
 ```
 
 ### **Network Info**
