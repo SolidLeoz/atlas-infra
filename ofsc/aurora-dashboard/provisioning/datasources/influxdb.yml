@@ -1,0 +1,14 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB-Aurora
+    type: influxdb
+    access: proxy
+    url: http://${AURORA_SOLIDSERVER_TS_IP}:8086
+    jsonData:
+      version: Flux
+      organization: ${EDGE_INFLUX_ORG}
+      defaultBucket: ${EDGE_INFLUX_BUCKET}
+      tlsSkipVerify: true
+    secureJsonData:
+      token: ${EDGE_INFLUX_ADMIN_TOKEN}

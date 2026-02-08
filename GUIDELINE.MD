@@ -984,18 +984,23 @@ Hostname: ofsc
     │     port: ${XIAOMI_MQTT_BROKER_PORT}
     │     client_id: ${XIAOMI_MQTT_CLIENT_ID}
     │     username: ${XIAOMI_MQTT_USERNAME}
+    │     password: ${XIAOMI_MQTT_PASSWORD}
     │     topics:
     │       telemetry: ${XIAOMI_MQTT_TELEMETRY_TOPIC}
-    │   telemetry:
-    │     interval: 60
+    │       commands: ${XIAOMI_MQTT_COMMANDS_TOPIC}
+    │       sensors:
+    │         battery: ${XIAOMI_MQTT_SENSORS_BATTERY_TOPIC}
+    │         location: ${XIAOMI_MQTT_SENSORS_LOCATION_TOPIC}
+    │         sensor: ${XIAOMI_MQTT_SENSORS_SENSOR_TOPIC}
+    │   sensors:
+    │     interval: ${XIAOMI_SENSORS_INTERVAL}
     │   logging:
     │     level: INFO
     │
-    ├── mqtt_client.py                   # MQTT publisher
+    ├── mobile_sensors.py                # MQTT + Termux sensors + comandi
     │   - Legge batteria via Termux API
-    │   - Pubblica ogni 60s
-    │   - Topic: ${XIAOMI_MQTT_TELEMETRY_TOPIC}
-    │   - Payload: JSON {battery_level, battery_status, timestamp}
+    │   - Pubblica telemetria + battery topic
+    │   - Sottoscrive ${XIAOMI_MQTT_COMMANDS_TOPIC}
     │
     └── certs/
         ├── ca.crt
@@ -1018,7 +1023,7 @@ Hostname: ofsc
 
 ### **Stato Client**
 ```yaml
-Status: Running (probabilmente via tmux session)
+Status: Gestito da Termux Boot (start-aurora.sh)
 MQTT Connection:
   - Broker: ${XIAOMI_MQTT_BROKER_HOST}:${XIAOMI_MQTT_BROKER_PORT}
   - TLS: enabled

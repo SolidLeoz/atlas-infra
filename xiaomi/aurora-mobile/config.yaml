@@ -1,0 +1,24 @@
+mqtt:
+  broker: "${XIAOMI_MQTT_BROKER_HOST}"
+  port: ${XIAOMI_MQTT_BROKER_PORT}
+  client_id: "${XIAOMI_MQTT_CLIENT_ID}"
+  username: "${XIAOMI_MQTT_USERNAME}"
+  password: "${XIAOMI_MQTT_PASSWORD}"
+  tls:
+    enabled: true
+    ca_cert: "certs/ca.crt"
+    client_cert: "certs/mobile.crt"
+    client_key: "certs/mobile.key"
+  topics:
+    telemetry: "${XIAOMI_MQTT_TELEMETRY_TOPIC}"
+    commands: "${XIAOMI_MQTT_COMMANDS_TOPIC}"
+    sensors:
+      battery: "${XIAOMI_MQTT_SENSORS_BATTERY_TOPIC}"
+      location: "${XIAOMI_MQTT_SENSORS_LOCATION_TOPIC}"
+      sensor: "${XIAOMI_MQTT_SENSORS_SENSOR_TOPIC}"
+
+sensors:
+  interval: 10  # seconds between readings
+
+logging:
+  level: "INFO"

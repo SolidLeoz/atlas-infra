@@ -1,3 +1,5 @@
+per_listener_settings true
+
 # Listener non-TLS (local only)
 listener ${MOSQUITTO_PLAIN_PORT} ${MOSQUITTO_PLAIN_BIND_ADDR}
 allow_anonymous true

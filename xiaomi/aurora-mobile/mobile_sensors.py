@@ -1,0 +1,433 @@
+#!/data/data/com.termux/files/usr/bin/python
+"""
+Aurora Mobile Sensors (Termux)
+
+OBIETTIVO:
+- Client MQTT su Termux con TLS + QoS=1
+- Evitare disconnessioni/reconnect loop causate da CLIENT_ID duplicati:
+  -> client-id dinamico (unico) + lockfile singleton
+- Pubblica telemetria e batteria
+- Riceve comandi su topic configurato ed esegue termux-* async
+"""
+
+import json
+import time
+import yaml
+import logging
+import subprocess
+import threading
+import socket
+import uuid
+import os
+import sys
+import fcntl
+from datetime import datetime, timezone
+
+import paho.mqtt.client as mqtt
+
+
+# ----------------------------
+# Env loader (.env)
+# ----------------------------
+def load_env_file():
+    candidates = []
+    env_path = os.environ.get("AURORA_ENV_FILE")
+    if env_path:
+        candidates.append(env_path)
+    candidates.extend(
+        [
+            os.path.join(os.getcwd(), ".env"),
+            os.path.join(os.path.expanduser("~"), ".env"),
+        ]
+    )
+    for path in candidates:
+        if not os.path.isfile(path):
+            continue
+        with open(path, "r") as f:
+            for raw_line in f:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export ") :].strip()
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip()
+                if (value.startswith('"') and value.endswith('"')) or (
+                    value.startswith("'") and value.endswith("'")
+                ):
+                    value = value[1:-1]
+                os.environ.setdefault(key, value)
+        return path
+    return None
+
+
+def expand_env(obj):
+    if isinstance(obj, dict):
+        return {k: expand_env(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [expand_env(v) for v in obj]
+    if isinstance(obj, str):
+        return os.path.expandvars(obj)
+    return obj
+
+
+def is_unresolved(value):
+    return isinstance(value, str) and ("${" in value or value.startswith("$"))
+
+
+def env_value(name):
+    value = os.environ.get(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value if value else None
+
+
+def coerce_int(value, label):
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value))
+    except ValueError as exc:
+        raise ValueError(f"{label} must be an integer") from exc
+
+
+def resolve_topic(value, fallback):
+    if not value or is_unresolved(value):
+        return fallback
+    return value
+
+
+# ----------------------------
+# Carica configurazione
+# ----------------------------
+env_path = load_env_file()
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.yaml")
+with open(CONFIG_PATH, "r") as f:
+    config = yaml.safe_load(f)
+
+config = expand_env(config)
+
+mqtt_cfg = config.setdefault("mqtt", {})
+topics_cfg = mqtt_cfg.setdefault("topics", {})
+sensors_topics_cfg = topics_cfg.setdefault("sensors", {})
+sensors_cfg = config.setdefault("sensors", {})
+logging_cfg = config.setdefault("logging", {})
+
+broker_env = env_value("XIAOMI_MQTT_BROKER_HOST")
+port_env = env_value("XIAOMI_MQTT_BROKER_PORT")
+client_id_env = env_value("XIAOMI_MQTT_CLIENT_ID")
+username_env = env_value("XIAOMI_MQTT_USERNAME")
+password_env = env_value("XIAOMI_MQTT_PASSWORD")
+telemetry_topic_env = env_value("XIAOMI_MQTT_TELEMETRY_TOPIC")
+commands_topic_env = env_value("XIAOMI_MQTT_COMMANDS_TOPIC")
+battery_topic_env = env_value("XIAOMI_MQTT_SENSORS_BATTERY_TOPIC")
+location_topic_env = env_value("XIAOMI_MQTT_SENSORS_LOCATION_TOPIC")
+sensor_topic_env = env_value("XIAOMI_MQTT_SENSORS_SENSOR_TOPIC")
+interval_env = env_value("XIAOMI_SENSORS_INTERVAL")
+
+if broker_env:
+    mqtt_cfg["broker"] = broker_env
+if port_env:
+    mqtt_cfg["port"] = port_env
+if client_id_env:
+    mqtt_cfg["client_id"] = client_id_env
+if username_env:
+    mqtt_cfg["username"] = username_env
+if password_env:
+    mqtt_cfg["password"] = password_env
+if telemetry_topic_env:
+    topics_cfg["telemetry"] = telemetry_topic_env
+if commands_topic_env:
+    topics_cfg["commands"] = commands_topic_env
+if battery_topic_env:
+    sensors_topics_cfg["battery"] = battery_topic_env
+if location_topic_env:
+    sensors_topics_cfg["location"] = location_topic_env
+if sensor_topic_env:
+    sensors_topics_cfg["sensor"] = sensor_topic_env
+if interval_env:
+    sensors_cfg["interval"] = interval_env
+
+mqtt_cfg["port"] = coerce_int(mqtt_cfg.get("port"), "mqtt.port")
+sensors_cfg["interval"] = coerce_int(sensors_cfg.get("interval") or 10, "sensors.interval") or 10
+
+if is_unresolved(mqtt_cfg.get("broker")):
+    mqtt_cfg["broker"] = None
+if is_unresolved(mqtt_cfg.get("client_id")):
+    mqtt_cfg["client_id"] = None
+if is_unresolved(mqtt_cfg.get("username")):
+    mqtt_cfg["username"] = None
+if is_unresolved(mqtt_cfg.get("password")):
+    mqtt_cfg["password"] = None
+
+if mqtt_cfg.get("broker") is None or mqtt_cfg.get("port") is None or mqtt_cfg.get("client_id") is None:
+    raise SystemExit("Missing required MQTT settings. Check XIAOMI_* values in .env.")
+
+device_id = mqtt_cfg["client_id"]
+topics_cfg["telemetry"] = resolve_topic(
+    topics_cfg.get("telemetry"),
+    f"devices/{device_id}/telemetry",
+)
+topics_cfg["commands"] = resolve_topic(
+    topics_cfg.get("commands"),
+    "devices/xiaomi/commands",
+)
+sensors_topics_cfg["battery"] = resolve_topic(
+    sensors_topics_cfg.get("battery"),
+    f"devices/{device_id}/sensors/battery",
+)
+sensors_topics_cfg["location"] = resolve_topic(
+    sensors_topics_cfg.get("location"),
+    f"devices/{device_id}/sensors/location",
+)
+sensors_topics_cfg["sensor"] = resolve_topic(
+    sensors_topics_cfg.get("sensor"),
+    f"devices/{device_id}/sensors/sensor",
+)
+
+
+# ----------------------------
+# Logging
+# ----------------------------
+logging.basicConfig(
+    level=getattr(logging, logging_cfg.get("level", "INFO")),
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+if env_path:
+    logger.info(f"Env caricato da: {env_path}")
+
+
+# ----------------------------
+# Singleton lock (ANTI DOPPIO AVVIO)
+# ----------------------------
+LOCK_DIR = os.path.join(os.path.expanduser("~"), ".aurora-lock")
+LOCK_PATH = os.path.join(LOCK_DIR, "mobile_sensors.lock")
+
+try:
+    os.makedirs(LOCK_DIR, exist_ok=True)
+    _lockfile = open(LOCK_PATH, "w")
+    fcntl.flock(_lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    logger.error("Istanza gia in esecuzione (lock presente). Esco.")
+    sys.exit(1)
+except Exception as e:
+    logger.error(f"Impossibile acquisire lock: {e}")
+    sys.exit(1)
+
+
+# ----------------------------
+# Identita dispositivi
+# ----------------------------
+DEVICE_ID = device_id
+MQTT_CLIENT_ID = f"{DEVICE_ID}-{socket.gethostname()}-{uuid.uuid4().hex[:6]}"
+
+logger.info(f"DEVICE_ID (payload): {DEVICE_ID}")
+logger.info(f"MQTT_CLIENT_ID (connessione): {MQTT_CLIENT_ID}")
+
+
+# ----------------------------
+# Sensori Termux (con retry)
+# ----------------------------
+def get_battery_status(retries: int = 2):
+    """Legge stato batteria via termux-battery-status con retry"""
+    for attempt in range(retries):
+        try:
+            result = subprocess.run(
+                ["termux-battery-status"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return json.loads(result.stdout)
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Timeout batteria (tentativo {attempt+1}/{retries})")
+            time.sleep(0.5)
+        except Exception as e:
+            logger.error(f"Errore batteria: {e}")
+            time.sleep(0.5)
+    return None
+
+
+# ----------------------------
+# Comandi (async)
+# ----------------------------
+def execute_command_async(command_data: dict):
+    """Esegue comando in thread separato per non bloccare loop MQTT"""
+    action = command_data.get("action")
+    try:
+        if action == "vibrate":
+            result = subprocess.run(
+                ["termux-vibrate", "-d", "500"],
+                timeout=2,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                logger.info("Vibrazione eseguita")
+            else:
+                logger.warning(
+                    f"Vibrazione fallita: rc={result.returncode} err={result.stderr.strip()}"
+                )
+        elif action == "notification":
+            title = command_data.get("title", "Aurora")
+            text = command_data.get("text", "Notifica")
+            result = subprocess.run(
+                ["termux-notification", "--title", title, "--content", text],
+                timeout=3,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                logger.info(f"Notifica: {title}")
+            else:
+                logger.warning(
+                    f"Notifica fallita: rc={result.returncode} err={result.stderr.strip()}"
+                )
+        else:
+            logger.warning(f"Azione non supportata: {action}")
+    except subprocess.TimeoutExpired:
+        logger.error(f"Timeout esecuzione comando: {action}")
+    except Exception as e:
+        logger.error(f"Errore comando ({action}): {e}")
+
+
+# ----------------------------
+# Callback MQTT
+# ----------------------------
+def on_connect(client, userdata, flags, rc, properties=None):
+    if rc == 0:
+        logger.info("Connesso al broker MQTT")
+        client.subscribe(topics_cfg["commands"], qos=1)
+        logger.info(f"Sottoscritto a {topics_cfg['commands']} (QoS 1)")
+    else:
+        logger.error(f"Connessione fallita: rc={rc}")
+
+
+def on_disconnect(client, userdata, rc, properties=None):
+    if rc != 0:
+        logger.warning(f"Disconnesso in modo inatteso (rc={rc}). Il loop tenterà reconnect.")
+    else:
+        logger.info("Disconnesso dal broker (rc=0)")
+
+
+def on_message(client, userdata, msg):
+    """Gestione comandi con threading"""
+    payload = msg.payload.decode(errors="replace")
+    logger.info(f"Comando: {payload}")
+    try:
+        command = json.loads(payload)
+        thread = threading.Thread(
+            target=execute_command_async, args=(command,), daemon=True
+        )
+        thread.start()
+    except Exception as e:
+        logger.error(f"Errore parsing comando: {e}")
+
+
+# ----------------------------
+# Setup client MQTT (TLS + QoS)
+# ----------------------------
+client = mqtt.Client(
+    mqtt.CallbackAPIVersion.VERSION2,
+    client_id=MQTT_CLIENT_ID,
+    clean_session=True,
+)
+
+client.on_connect = on_connect
+client.on_disconnect = on_disconnect
+client.on_message = on_message
+
+if mqtt_cfg.get("username"):
+    client.username_pw_set(mqtt_cfg["username"], mqtt_cfg.get("password"))
+
+if mqtt_cfg.get("tls", {}).get("enabled"):
+    tls_cfg = mqtt_cfg["tls"]
+    ca_cert = tls_cfg.get("ca_cert")
+    client_cert = tls_cfg.get("client_cert")
+    client_key = tls_cfg.get("client_key")
+    if is_unresolved(ca_cert) or is_unresolved(client_cert) or is_unresolved(client_key):
+        raise SystemExit("Missing TLS cert paths. Check config.yaml or .env.")
+    client.tls_set(
+        ca_certs=ca_cert,
+        certfile=client_cert,
+        keyfile=client_key,
+    )
+    client.tls_insecure_set(False)
+    logger.info("TLS abilitato")
+
+BROKER = mqtt_cfg["broker"]
+PORT = mqtt_cfg["port"]
+
+logger.info(f"Connessione a {BROKER}:{PORT}")
+client.connect(BROKER, PORT, 60)
+client.loop_start()
+
+
+# ----------------------------
+# Loop principale telemetria
+# ----------------------------
+try:
+    iteration = 0
+    while True:
+        iteration += 1
+        battery = get_battery_status()
+
+        if battery:
+            ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+            battery_payload = {
+                "timestamp": ts,
+                "device_id": DEVICE_ID,
+                "percentage": battery.get("percentage"),
+                "temperature": battery.get("temperature", 0),
+                "status": battery.get("status"),
+            }
+
+            client.publish(
+                sensors_topics_cfg["battery"],
+                json.dumps(battery_payload),
+                qos=1,
+            )
+
+            telemetry = {
+                "timestamp": ts,
+                "device_id": DEVICE_ID,
+                "iteration": iteration,
+                "battery": {
+                    "percentage": battery.get("percentage"),
+                    "temperature": battery.get("temperature", 0),
+                    "status": battery.get("status"),
+                },
+            }
+
+            client.publish(
+                topics_cfg["telemetry"],
+                json.dumps(telemetry),
+                qos=1,
+            )
+
+            logger.info(
+                f"Telemetria #{iteration} - Batteria: {battery.get('percentage')}%"
+            )
+        else:
+            logger.warning(f"Telemetria #{iteration} - Batteria: N/A (timeout)")
+
+        time.sleep(sensors_cfg["interval"])
+
+except KeyboardInterrupt:
+    logger.info("Shutdown (CTRL+C)")
+finally:
+    try:
+        client.loop_stop()
+        client.disconnect()
+    except Exception:
+        pass
