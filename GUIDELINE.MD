@@ -640,59 +640,14 @@ Network: Tailscale mesh
 ```
 /home/leoz/
 │
-├── atlas-edge-hub/                     # Hub centrale IoT
-│   ├── docker-compose.yml               # Orchestrazione stack
+├── atlas-infra/atlas-core/edge-hub/     # Hub centrale IoT
+│   ├── docker-compose.yml               # InfluxDB + Grafana + Telegraf collector
 │   │   version: '3.8'
-│   │   networks:
-│   │     atlas-net:
 │   │   services:
-│   │     mosquitto:                     # MQTT Broker
-│   │       image: eclipse-mosquitto:2.0
-│   │       container_name: atlas-mosquitto
-│   │       ports:
-│   │         - "1883:1883"              # Non-TLS (local only)
-│   │         - "8883:8883"              # TLS (external)
-│   │       volumes:
-│   │         - /etc/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
-│   │         - /etc/mosquitto/conf.d:/mosquitto/config/conf.d
-│   │         - /etc/mosquitto/certs:/mosquitto/certs
-│   │         - /var/log/mosquitto:/mosquitto/log
-│   │       network_mode: host
-│   │
-│   │     telegraf:                      # Telegraf Centrale
-│   │       image: telegraf:1.29-alpine
-│   │       container_name: atlas-telegraf
-│   │       volumes:
-│   │         - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
-│   │       network_mode: host
-│   │
-│   │     influxdb:                      # Time-Series Database
-│   │       image: influxdb:2.7-alpine
-│   │       container_name: atlas-influxdb
-│   │       ports:
-│   │         - "${EDGE_INFLUX_BIND_ADDR}:${EDGE_INFLUX_PORT_HOST}:8086"
-│   │       volumes:
-│   │         - influxdb-data:/var/lib/influxdb2
-│   │         - influxdb-config:/etc/influxdb2
-│   │       environment:
-│   │         DOCKER_INFLUXDB_INIT_MODE: setup
-│   │         DOCKER_INFLUXDB_INIT_USERNAME: ${EDGE_INFLUX_INIT_USERNAME}
-│   │         DOCKER_INFLUXDB_INIT_PASSWORD: ${EDGE_INFLUX_INIT_PASSWORD}
-│   │         DOCKER_INFLUXDB_INIT_ORG: ${EDGE_INFLUX_ORG}
-│   │         DOCKER_INFLUXDB_INIT_BUCKET: ${EDGE_INFLUX_BUCKET}
-│   │         DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${EDGE_INFLUX_ADMIN_TOKEN}
-│   │
-│   │     grafana:                       # Dashboard & Visualization
-│   │       image: grafana/grafana:10.2.3
-│   │       container_name: atlas-grafana
-│   │       ports:
-│   │         - "${EDGE_GRAFANA_BIND_ADDR}:${EDGE_GRAFANA_PORT_HOST}:3000"
-│   │       volumes:
-│   │         - grafana-data:/var/lib/grafana
-│   │       environment:
-│   │         GF_SECURITY_ADMIN_USER: ${EDGE_GRAFANA_ADMIN_USER}
-│   │         GF_SECURITY_ADMIN_PASSWORD: ${EDGE_GRAFANA_ADMIN_PASSWORD}
-│   │
+│   │     influxdb:
+│   │     telegraf:
+│   │     grafana:
+│   │   # Mosquitto gira via systemd (non in docker-compose)
 │   ├── telegraf.conf                    # Telegraf central config
 │   │   [agent]
 │   │     hostname: ${EDGE_TELEGRAF_HOSTNAME}
@@ -826,12 +781,12 @@ Network: Tailscale mesh
 ### **Container Docker Attivi**
 ```bash
 CONTAINER ID   NAME                        STATUS
-xxxxxxxxxx     atlas-mosquitto            Up
-xxxxxxxxxx     atlas-telegraf             Up
-xxxxxxxxxx     atlas-influxdb             Up (port 8086)
-xxxxxxxxxx     atlas-grafana              Up (port 3001)
-xxxxxxxxxx     iot-gateway                 Up
-xxxxxxxxxx     atlas-agent-core    Up
+# mosquitto e gestito via systemd (non container)
+xxxxxxxxxx     edge-hub-telegraf-1         Up
+xxxxxxxxxx     edge-hub-influxdb-1         Up (port 8086)
+xxxxxxxxxx     edge-hub-grafana-1          Up (port 3001)
+xxxxxxxxxx     iot-gateway                 Up (optional)
+xxxxxxxxxx     atlas-agent-core            Up
 ```
 
 ### **InfluxDB Data**
@@ -843,8 +798,7 @@ Bucket: telemetry
 
 Tokens:
   - ${EDGE_INFLUX_ADMIN_TOKEN} (admin, all permissions)
-  - RraCDJ7ol071KAl1Y9e39BK89iUSA75hok4qg3KbS3Cux_uOgejFmcbLmQu7VVfU_L6qC7c4-eVVToIBpgBGGA== (read bucket 1034f0cdf394b000)
-  - dheEEzcWI0VjA1_JQBC60-Z91YupfxjgtUymrmR8Bqr8DhraosxeMiTKFCN7u2Tq2mFjnUV2i3WitI4x0c6tbQ== (read telemetry bucket)
+  - <read-only-token> (store in .env, not in Git)
 
 Measurements:
   - cpu (from all agents)
@@ -1157,14 +1111,14 @@ Tailscale Mesh Network (100.x.x.x/10)
 ### **Atlas Core**
 ```yaml
 Volumes:
-  - influxdb-data: /var/lib/docker/volumes/atlas-edge-hub_influxdb-data
+  - influxdb-data: /var/lib/docker/volumes/edge-hub_influxdb-data
     Size: ~varios MB (time-series data)
     Contains: InfluxDB bucket data
   
-  - influxdb-config: /var/lib/docker/volumes/atlas-edge-hub_influxdb-config
+  - influxdb-config: /var/lib/docker/volumes/edge-hub_influxdb-config
     Contains: InfluxDB configuration
   
-  - grafana-data: /var/lib/docker/volumes/atlas-edge-hub_grafana-data
+  - grafana-data: /var/lib/docker/volumes/edge-hub_grafana-data
     Contains: Grafana dashboards, users, datasources
 ```
 
@@ -1186,7 +1140,7 @@ openssl x509 -in ~/mqtt-certs/atlas-lab.crt -text -noout
 ### **Atlas Core**
 ```bash
 # Verifica stack
-cd ~/atlas-edge-hub
+cd ~/atlas-infra/atlas-core/edge-hub
 docker compose ps
 docker compose logs -f
 
@@ -1195,8 +1149,8 @@ sudo tail -f /var/log/mosquitto/mosquitto.log
 mosquitto_sub -h ${ATLAS_CORE_TS_IP} -p 1883 -t "devices/#" -v
 
 # Verifica InfluxDB
-docker exec -it atlas-influxdb influx bucket list --org ${EDGE_INFLUX_ORG}
-docker exec -it atlas-influxdb influx query 'from(bucket:"telemetry") |> range(start:-5m) |> limit(n:10)' --org ${EDGE_INFLUX_ORG} --token ${EDGE_INFLUX_ADMIN_TOKEN}
+docker exec -it edge-hub-influxdb-1 influx bucket list --org ${EDGE_INFLUX_ORG}
+docker exec -it edge-hub-influxdb-1 influx query 'from(bucket:"telemetry") |> range(start:-5m) |> limit(n:10)' --org ${EDGE_INFLUX_ORG} --token ${EDGE_INFLUX_ADMIN_TOKEN}
 
 # Verifica certificati broker
 ls -lh /etc/mosquitto/certs/
