@@ -16,3 +16,12 @@ Telemetry format:
 - Topics/measurements:
   - `devices/<device>/sensors/battery` -> `mobile_battery` (percentage, temperature, status tag)
   - `devices/<device>/telemetry` -> `mobile_telemetry` (iteration, battery_percent, battery_temp, status tag)
+  - `devices/<device>/telemetry` -> `cpu`, `mem`, `disk`, `system`, `temp`
+    - cpu: `usage_active` + tag `cpu=cpu-total`
+    - mem: `used_percent`
+    - disk: `used_percent` + tag `path`
+    - system: `uptime` (int seconds), `load1`
+    - temp: `temp` + tag `sensor=battery`
+
+Optional env:
+- `XIAOMI_DISK_PATH` (default `~/`) for disk usage path.

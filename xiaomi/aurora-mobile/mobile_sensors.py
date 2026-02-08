@@ -21,6 +21,7 @@ import uuid
 import os
 import sys
 import fcntl
+import shutil
 
 import paho.mqtt.client as mqtt
 
@@ -285,6 +286,9 @@ MQTT_CLIENT_ID = f"{DEVICE_ID}-{socket.gethostname()}-{uuid.uuid4().hex[:6]}"
 
 logger.info(f"DEVICE_ID (payload): {DEVICE_ID}")
 logger.info(f"MQTT_CLIENT_ID (connessione): {MQTT_CLIENT_ID}")
+logger.info(f"DISK_PATH: {DISK_PATH}")
+
+DISK_PATH = os.path.expanduser(env_value("XIAOMI_DISK_PATH") or "~")
 
 
 # ----------------------------
@@ -309,6 +313,107 @@ def get_battery_status(retries: int = 2):
             logger.error(f"Errore batteria: {e}")
             time.sleep(0.5)
     return None
+
+
+_prev_cpu_total = None
+_prev_cpu_idle = None
+
+
+def _read_first_line(path):
+    try:
+        with open(path, "r") as f:
+            return f.readline().strip()
+    except Exception:
+        return None
+
+
+def get_cpu_usage_active():
+    global _prev_cpu_total, _prev_cpu_idle
+    line = _read_first_line("/proc/stat")
+    if not line or not line.startswith("cpu "):
+        return None
+    parts = line.split()
+    try:
+        values = [int(x) for x in parts[1:]]
+    except ValueError:
+        return None
+    if len(values) < 4:
+        return None
+    idle = values[3] + (values[4] if len(values) > 4 else 0)
+    total = sum(values)
+    if _prev_cpu_total is None:
+        _prev_cpu_total = total
+        _prev_cpu_idle = idle
+        return None
+    delta_total = total - _prev_cpu_total
+    delta_idle = idle - _prev_cpu_idle
+    _prev_cpu_total = total
+    _prev_cpu_idle = idle
+    if delta_total <= 0:
+        return None
+    usage = 100.0 * (delta_total - delta_idle) / delta_total
+    if usage < 0:
+        return 0.0
+    if usage > 100:
+        return 100.0
+    return usage
+
+
+def get_mem_used_percent():
+    try:
+        meminfo = {}
+        with open("/proc/meminfo", "r") as f:
+            for line in f:
+                if ":" not in line:
+                    continue
+                key, value = line.split(":", 1)
+                value = value.strip().split()[0]
+                meminfo[key] = int(value)
+        mem_total = meminfo.get("MemTotal")
+        mem_available = meminfo.get("MemAvailable")
+        if mem_total is None:
+            return None
+        if mem_available is None:
+            mem_free = meminfo.get("MemFree", 0)
+            buffers = meminfo.get("Buffers", 0)
+            cached = meminfo.get("Cached", 0)
+            mem_available = mem_free + buffers + cached
+        used = mem_total - mem_available
+        if mem_total <= 0:
+            return None
+        return (used / mem_total) * 100.0
+    except Exception:
+        return None
+
+
+def get_disk_used_percent(path):
+    try:
+        usage = shutil.disk_usage(path)
+        if usage.total <= 0:
+            return None
+        return (usage.used / usage.total) * 100.0
+    except Exception:
+        return None
+
+
+def get_load1():
+    line = _read_first_line("/proc/loadavg")
+    if not line:
+        return None
+    try:
+        return float(line.split()[0])
+    except (ValueError, IndexError):
+        return None
+
+
+def get_uptime_seconds():
+    line = _read_first_line("/proc/uptime")
+    if not line:
+        return None
+    try:
+        return int(float(line.split()[0]))
+    except (ValueError, IndexError):
+        return None
 
 
 # ----------------------------
@@ -433,10 +538,13 @@ try:
     iteration = 0
     while True:
         iteration += 1
+        timestamp_ns = int(time.time() * 1_000_000_000)
         battery = get_battery_status()
+        percentage = None
+        temperature = None
+        status = None
 
         if battery:
-            timestamp_ns = int(time.time() * 1_000_000_000)
             percentage = battery.get("percentage")
             temperature = battery.get("temperature")
             status = battery.get("status") or "unknown"
@@ -460,30 +568,96 @@ try:
                     qos=1,
                 )
 
-            telemetry_fields = {"iteration": int(iteration)}
-            if percentage is not None:
-                telemetry_fields["battery_percent"] = float(percentage)
-            if temperature is not None:
-                telemetry_fields["battery_temp"] = float(temperature)
-
-            telemetry_line = _format_line_protocol(
-                "mobile_telemetry",
-                {"status": status},
-                telemetry_fields,
-                timestamp_ns,
-            )
-            if telemetry_line:
-                client.publish(
-                    topics_cfg["telemetry"],
-                    telemetry_line,
-                    qos=1,
-                )
-
             logger.info(
                 f"Telemetria #{iteration} - Batteria: {battery.get('percentage')}%"
             )
         else:
             logger.warning(f"Telemetria #{iteration} - Batteria: N/A (timeout)")
+
+        lines = []
+        telemetry_fields = {"iteration": int(iteration)}
+        if percentage is not None:
+            telemetry_fields["battery_percent"] = float(percentage)
+        if temperature is not None:
+            telemetry_fields["battery_temp"] = float(temperature)
+
+        telemetry_tags = {"status": status} if status else None
+        telemetry_line = _format_line_protocol(
+            "mobile_telemetry",
+            telemetry_tags,
+            telemetry_fields,
+            timestamp_ns,
+        )
+        if telemetry_line:
+            lines.append(telemetry_line)
+
+        cpu_usage = get_cpu_usage_active()
+        if cpu_usage is not None:
+            cpu_line = _format_line_protocol(
+                "cpu",
+                {"cpu": "cpu-total"},
+                {"usage_active": float(cpu_usage)},
+                timestamp_ns,
+            )
+            if cpu_line:
+                lines.append(cpu_line)
+
+        mem_used = get_mem_used_percent()
+        if mem_used is not None:
+            mem_line = _format_line_protocol(
+                "mem",
+                None,
+                {"used_percent": float(mem_used)},
+                timestamp_ns,
+            )
+            if mem_line:
+                lines.append(mem_line)
+
+        disk_used = get_disk_used_percent(DISK_PATH)
+        if disk_used is not None:
+            disk_line = _format_line_protocol(
+                "disk",
+                {"path": DISK_PATH},
+                {"used_percent": float(disk_used)},
+                timestamp_ns,
+            )
+            if disk_line:
+                lines.append(disk_line)
+
+        system_fields = {}
+        uptime_seconds = get_uptime_seconds()
+        if uptime_seconds is not None:
+            system_fields["uptime"] = int(uptime_seconds)
+        load1 = get_load1()
+        if load1 is not None:
+            system_fields["load1"] = float(load1)
+        if system_fields:
+            system_line = _format_line_protocol(
+                "system",
+                None,
+                system_fields,
+                timestamp_ns,
+            )
+            if system_line:
+                lines.append(system_line)
+
+        if temperature is not None:
+            temp_line = _format_line_protocol(
+                "temp",
+                {"sensor": "battery"},
+                {"temp": float(temperature)},
+                timestamp_ns,
+            )
+            if temp_line:
+                lines.append(temp_line)
+
+        if lines:
+            payload = "\n".join(lines)
+            client.publish(
+                topics_cfg["telemetry"],
+                payload,
+                qos=1,
+            )
 
         time.sleep(sensors_cfg["interval"])
 
