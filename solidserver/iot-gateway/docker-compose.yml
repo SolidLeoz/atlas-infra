@@ -1,0 +1,17 @@
+services:
+  iot-gateway:
+    build: .
+    container_name: iot-gateway
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    volumes:
+      - ./config:/app/config:ro
+      - ./logs:/app/logs
+      - ./certs:/app/certs:ro
+    network_mode: host
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

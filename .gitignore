@@ -1,0 +1,23 @@
+# Secrets and local env
+.env
+**/.env
+**/.env.local.bak
+
+# Runtime/generated configs
+**/_local_runtime/
+solidserver/edge-hub/telegraf.conf
+solidserver/edge-hub/provisioning/datasources/influxdb.yml
+solidserver/agent-solidserver/telegraf.conf
+
+# Certificates and logs
+**/certs/
+**/*.key
+**/*.csr
+**/*.crt
+**/*.p12
+**/logs/
+**/*.log
+
+# Backups and archives
+**/*.bak
+**/*.tar.gz

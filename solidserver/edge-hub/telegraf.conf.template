@@ -1,0 +1,29 @@
+[agent]
+  interval = "10s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  flush_interval = "10s"
+  hostname = "${EDGE_TELEGRAF_HOSTNAME}"
+
+[[outputs.influxdb_v2]]
+  urls = ["${EDGE_INFLUX_URL_TELEGRAF}"]
+  token = "${EDGE_INFLUX_ADMIN_TOKEN}"
+  organization = "${EDGE_INFLUX_ORG}"
+  bucket = "${EDGE_INFLUX_BUCKET}"
+
+[[inputs.mqtt_consumer]]
+  servers = ["${EDGE_MQTT_URL}"]
+  topics = [
+    "devices/+/telemetry",
+    "devices/+/sensors/#"
+  ]
+  client_id = "telegraf-collector"
+  data_format = "influx"
+
+[[processors.regex]]
+  [[processors.regex.tags]]
+    key = "topic"
+    pattern = "^devices/([^/]+)/.*"
+    replacement = "${1}"
+    result_key = "device"

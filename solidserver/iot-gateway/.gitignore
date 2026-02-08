@@ -1,0 +1,19 @@
+# File sensibili - NON commitare!
+certs/*.key
+certs/*.crt
+certs/*.p12
+config/gateway.yaml
+
+# File temporanei
+logs/
+*.log
+__pycache__/
+*.pyc
+
+# Docker
+*.tar
+
+# Editor
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,12 @@
+# Listener non-TLS (local only)
+listener ${MOSQUITTO_PLAIN_PORT} ${MOSQUITTO_PLAIN_BIND_ADDR}
+allow_anonymous true
+
+# Listener TLS (external)
+listener ${MOSQUITTO_TLS_PORT} ${MOSQUITTO_TLS_BIND_ADDR}
+cafile ${MOSQUITTO_CAFILE}
+certfile ${MOSQUITTO_CERTFILE}
+keyfile ${MOSQUITTO_KEYFILE}
+require_certificate true
+use_identity_as_username true
+allow_anonymous false

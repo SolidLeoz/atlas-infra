@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: aurora-influxdb
+    restart: unless-stopped
+    ports:
+      - "${EDGE_INFLUX_BIND_ADDR}:${EDGE_INFLUX_PORT_HOST}:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${EDGE_INFLUX_INIT_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${EDGE_INFLUX_INIT_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${EDGE_INFLUX_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${EDGE_INFLUX_BUCKET}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${EDGE_INFLUX_ADMIN_TOKEN}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    networks:
+      - aurora-net
+
+  telegraf:
+    image: telegraf:1.29-alpine
+    container_name: aurora-telegraf
+    restart: unless-stopped
+    depends_on:
+      - influxdb
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./certs:/certs:ro
+    networks:
+      - aurora-net
+
+volumes:
+  influxdb-data:
+  influxdb-config:
+
+networks:
+  aurora-net:
+    driver: bridge
