@@ -35,6 +35,6 @@ fi
 
 envsubst < telegraf.conf.template > _local_runtime/telegraf.conf
 cp -f _local_runtime/telegraf.conf telegraf.conf
-chmod 600 telegraf.conf
+chmod 644 telegraf.conf
 
 echo "[OK] Runtime config generata: telegraf.conf"
