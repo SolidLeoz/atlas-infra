@@ -1,6 +1,7 @@
-# Aurora dashboard (OFSC)
+# Aurora dashboard (OFSC) [Deprecated]
 
-Grafana dashboard container for OFSC.
+This legacy Grafana container is no longer used. The active Grafana instance
+is hosted on solidserver. Keep this folder only for reference.
 
 Setup:
 - Place provisioning files in `./provisioning`.

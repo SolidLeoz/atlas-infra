@@ -1106,9 +1106,15 @@ devices/
     │   └── battery                      # Line Protocol (mobile_battery)
     │       Frequency: 10s
     │       Measurements: percentage, temperature
-    └── telemetry                        # Line Protocol (mobile_telemetry)
+    └── telemetry                        # Line Protocol (mobile_telemetry + system)
         Frequency: 10s
-        Measurements: iteration, battery_percent, battery_temp
+        Measurements:
+          - mobile_telemetry: iteration, battery_percent, battery_temp
+          - cpu: usage_active
+          - mem: used_percent
+          - disk: used_percent (tag: path)
+          - system: uptime, load1
+          - temp: temp (tag: sensor=battery)
 ```
 
 ---

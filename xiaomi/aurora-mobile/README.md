@@ -25,3 +25,7 @@ Telemetry format:
 
 Optional env:
 - `XIAOMI_DISK_PATH` (default `~/`) for disk usage path.
+
+Notes:
+- Android may restrict `/proc` access; CPU and system metrics use `top` and
+  `uptime` fallbacks when needed, so values are approximate.
