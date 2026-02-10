@@ -25,6 +25,7 @@
   tls_ca = "${EDGE_MQTT_TLS_CA}"
   tls_cert = "${EDGE_MQTT_TLS_CERT}"
   tls_key = "${EDGE_MQTT_TLS_KEY}"
+  tls_min_version = "TLS12"
 
 [[processors.regex]]
   [[processors.regex.tags]]

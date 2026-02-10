@@ -1,0 +1,216 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: atlas-infrastructure
+    folder: Atlas
+    interval: 1m
+    rules:
+
+      # 1. Device silenzioso — nessun dato da un device per >5 minuti
+      - uid: atlas-device-silent
+        title: "Device silenzioso"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600  # ultimi 10 minuti
+              to: 0
+            datasourceUid: InfluxDB
+            model:
+              rawQuery: true
+              query: |
+                from(bucket: "telemetry")
+                  |> range(start: -10m)
+                  |> filter(fn: (r) => r._measurement == "cpu" and r._field == "usage_active")
+                  |> group(columns: ["device"])
+                  |> count()
+                  |> yield(name: "count")
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: lt
+                    params: [1]
+                  operator:
+                    type: and
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Nessun dato ricevuto dal device {{ $labels.device }} negli ultimi 5 minuti"
+        labels:
+          severity: warning
+
+      # 2. Disco quasi pieno — disk_used > 85%
+      - uid: atlas-disk-high
+        title: "Disco quasi pieno (>85%)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: InfluxDB
+            model:
+              rawQuery: true
+              query: |
+                from(bucket: "telemetry")
+                  |> range(start: -5m)
+                  |> filter(fn: (r) => r._measurement == "disk" and r._field == "used_percent")
+                  |> group(columns: ["device"])
+                  |> last()
+                  |> yield(name: "last")
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [85]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Disco al {{ $values.B }}% sul device {{ $labels.device }}"
+        labels:
+          severity: warning
+
+      # 3. CPU alta sostenuta — cpu_usage > 90% per >10 minuti
+      - uid: atlas-cpu-high
+        title: "CPU alta sostenuta (>90%)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: InfluxDB
+            model:
+              rawQuery: true
+              query: |
+                from(bucket: "telemetry")
+                  |> range(start: -15m)
+                  |> filter(fn: (r) => r._measurement == "cpu" and r._field == "usage_active" and r.cpu == "cpu-total")
+                  |> group(columns: ["device"])
+                  |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
+                  |> yield(name: "mean")
+          - refId: B
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: mean
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Alerting
+        for: 10m
+        annotations:
+          summary: "CPU media al {{ $values.B }}% sul device {{ $labels.device }} negli ultimi 10 minuti"
+        labels:
+          severity: critical
+
+      # 4. Memoria critica — mem_used > 90%
+      - uid: atlas-mem-high
+        title: "Memoria critica (>90%)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: InfluxDB
+            model:
+              rawQuery: true
+              query: |
+                from(bucket: "telemetry")
+                  |> range(start: -5m)
+                  |> filter(fn: (r) => r._measurement == "mem" and r._field == "used_percent")
+                  |> group(columns: ["device"])
+                  |> last()
+                  |> yield(name: "last")
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              settings:
+                mode: dropNN
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+                  operator:
+                    type: and
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: "Memoria al {{ $values.B }}% sul device {{ $labels.device }}"
+        labels:
+          severity: critical

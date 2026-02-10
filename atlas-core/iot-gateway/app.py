@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import ssl
 import paho.mqtt.client as mqtt
 import json
 import time
@@ -118,12 +119,17 @@ client.on_message = on_message
 # Configura TLS se abilitato
 if config['mqtt'].get('tls', {}).get('enabled', False):
     tls_config = config['mqtt']['tls']
-    client.tls_set(
-        ca_certs=tls_config['ca_cert'],
-        certfile=tls_config.get('certfile'),
-        keyfile=tls_config.get('keyfile')
-    )
-    logger.info("TLS configurato")
+    # ✅ TLS hardening: SSLContext con versione minima TLS 1.2
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_verify_locations(cafile=tls_config['ca_cert'])
+    if tls_config.get('certfile'):
+        context.load_cert_chain(
+            certfile=tls_config['certfile'],
+            keyfile=tls_config.get('keyfile')
+        )
+    client.tls_set_context(context)
+    logger.info("TLS configurato (min TLS 1.2)")
 
 # Connetti al broker
 logger.info(f"Connessione a {config['mqtt']['broker']}:{config['mqtt']['port']}")

@@ -29,6 +29,7 @@
   tls_ca = "/certs/ca.crt"
   tls_cert = "/certs/${ATLAS_CORE_AGENT_DEVICE_ID}.crt"
   tls_key = "/certs/${ATLAS_CORE_AGENT_DEVICE_ID}.key"
+  tls_min_version = "TLS12"
   data_format = "influx"
 
 [[processors.converter]]

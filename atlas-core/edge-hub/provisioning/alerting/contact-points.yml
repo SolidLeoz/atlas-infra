@@ -1,0 +1,12 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: atlas-default
+    receivers:
+      - uid: atlas-webhook
+        type: webhook
+        settings:
+          url: "${ATLAS_ALERT_WEBHOOK_URL}"
+          httpMethod: POST
+        disableResolveMessage: false

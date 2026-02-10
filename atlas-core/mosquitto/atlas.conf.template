@@ -16,5 +16,10 @@ require_certificate true
 use_identity_as_username true
 allow_anonymous false
 
+# ✅ TLS hardening: versione minima TLS 1.2, cipher suite AEAD-only
+# No CBC, no RC4, no 3DES — solo cipher con forward secrecy e authenticated encryption.
+tls_version tlsv1.2
+ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305
+
 # ✅ ACLs — controllo accessi per-device attivo
 ${MOSQUITTO_ACL_LINE}

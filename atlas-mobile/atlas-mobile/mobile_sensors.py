@@ -22,6 +22,7 @@ import os
 import sys
 import fcntl
 import shutil
+import ssl
 
 import paho.mqtt.client as mqtt
 
@@ -602,13 +603,14 @@ if mqtt_cfg.get("tls", {}).get("enabled"):
     client_key = tls_cfg.get("client_key")
     if is_unresolved(ca_cert) or is_unresolved(client_cert) or is_unresolved(client_key):
         raise SystemExit("Missing TLS cert paths. Check config.yaml or .env.")
-    client.tls_set(
-        ca_certs=ca_cert,
-        certfile=client_cert,
-        keyfile=client_key,
-    )
+    # ✅ TLS hardening: SSLContext con versione minima TLS 1.2
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_verify_locations(cafile=ca_cert)
+    context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+    client.tls_set_context(context)
     client.tls_insecure_set(False)
-    logger.info("TLS abilitato")
+    logger.info("TLS abilitato (min TLS 1.2, mTLS)")
 
 BROKER = mqtt_cfg["broker"]
 PORT = mqtt_cfg["port"]
