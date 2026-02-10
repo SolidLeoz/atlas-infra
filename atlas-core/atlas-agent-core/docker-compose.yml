@@ -6,10 +6,30 @@ services:
     env_file:
       - ./.env
 
-    # ⚠️ Punto critico: host network. Va bene per metriche host,
-    # ma riduce isolamento. Miglioramento futuro: bridge + mount /proc,/sys RO.
-    network_mode: host
+    # ✅ Hardened: rimosso network_mode host → bridge con mount /proc,/sys RO.
+    # pid: host necessario per metriche CPU/system accurate.
+    pid: host
+
+    environment:
+      - HOST_PROC=/host/proc
+      - HOST_SYS=/host/sys
+      - HOST_ETC=/host/etc
 
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - ./certs:/certs:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc:/host/etc:ro
+
+    healthcheck:
+      test: ["CMD", "pgrep", "telegraf"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'

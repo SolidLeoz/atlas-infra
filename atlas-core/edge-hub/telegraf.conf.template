@@ -21,6 +21,11 @@
   client_id = "telegraf-collector"
   data_format = "influx"
 
+  # ✅ mTLS: il collector si autentica al broker con certificato dedicato
+  tls_ca = "${EDGE_MQTT_TLS_CA}"
+  tls_cert = "${EDGE_MQTT_TLS_CERT}"
+  tls_key = "${EDGE_MQTT_TLS_KEY}"
+
 [[processors.regex]]
   [[processors.regex.tags]]
     key = "topic"

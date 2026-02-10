@@ -5,10 +5,30 @@ services:
     restart: unless-stopped
     env_file:
       - ./.env
+
+    # ✅ Hardened: rimosso network_mode host → bridge con mount /proc,/sys RO.
+    pid: host
+
+    environment:
+      - HOST_PROC=/host/proc
+      - HOST_SYS=/host/sys
+      - HOST_ETC=/host/etc
+
     volumes:
       - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - ./certs:/certs:ro
-    network_mode: host
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc:/host/etc:ro
 
-volumes: {}
-networks: {}
+    healthcheck:
+      test: ["CMD", "pgrep", "telegraf"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
