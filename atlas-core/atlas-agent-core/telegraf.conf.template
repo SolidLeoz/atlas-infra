@@ -31,6 +31,12 @@
   tls_key = "/certs/${ATLAS_CORE_AGENT_DEVICE_ID}.key"
   data_format = "influx"
 
+  # Last Will and Testament
+  will_topic = "devices/${ATLAS_CORE_AGENT_DEVICE_ID}/status"
+  will_payload = "offline"
+  will_qos = 1
+  will_retain = true
+
 [[processors.converter]]
   [processors.converter.fields]
     tag = ["host"]

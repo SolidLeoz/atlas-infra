@@ -18,6 +18,13 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=${EDGE_INFLUX_BUCKET}
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${EDGE_INFLUX_ADMIN_TOKEN}
 
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
     volumes:
       - influxdb-data:/var/lib/influxdb2
       - influxdb-config:/etc/influxdb2
@@ -56,6 +63,13 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${EDGE_GRAFANA_ADMIN_PASSWORD}
       # (opzionale) riduce possibilità di signup/abusi se un giorno esponi grafana
       - GF_USERS_ALLOW_SIGN_UP=false
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
     volumes:
       - grafana-data:/var/lib/grafana

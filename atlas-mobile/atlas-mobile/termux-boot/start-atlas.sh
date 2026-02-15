@@ -31,9 +31,18 @@ fi
 
 (
   while true; do
-    echo "[$(date -u +%FT%TZ)] starting atlas mobile node" >> "$LOG_FILE"
+    echo "[$(date -u +%FT%TZ)] starting atlas mobile node (sensors)" >> "$LOG_FILE"
     python mobile_sensors.py >> "$LOG_FILE" 2>&1 || true
-    echo "[$(date -u +%FT%TZ)] atlas mobile node exited; restarting in 3s" >> "$LOG_FILE"
+    echo "[$(date -u +%FT%TZ)] atlas mobile node (sensors) exited; restarting in 3s" >> "$LOG_FILE"
+    sleep 3
+  done
+) &
+
+(
+  while true; do
+    echo "[$(date -u +%FT%TZ)] starting atlas mobile watcher" >> "$LOG_FILE"
+    python watcher.py >> "$LOG_FILE" 2>&1 || true
+    echo "[$(date -u +%FT%TZ)] atlas mobile watcher exited; restarting in 3s" >> "$LOG_FILE"
     sleep 3
   done
 ) &

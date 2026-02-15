@@ -62,6 +62,12 @@ devices -> MQTT TLS -> telegraf collector -> InfluxDB -> Grafana
 Optional env:
 - `ATLAS_MOBILE_DISK_PATH` (default `~/`) for disk usage path.
 
+## Operational Scripts
+The `scripts/` directory contains tools for infrastructure maintenance:
+- `generate-certs.sh`: PKI automation for mTLS.
+- `backup-influx.sh`: Hot backup utility for InfluxDB.
+- See [scripts/README.md](./scripts/README.md) for more details.
+
 ## Grafana
 - URL: `http://atlas-core:3001` (Tailscale)
 - Dashboards: "Atlas Overview", "Atlas Device Detail"
@@ -85,3 +91,4 @@ Optional env:
   `/etc/mosquitto/acl.conf` and set `MOSQUITTO_ACL_FILE` in `.env`.
 - If you use HTTPS for Influx, keep `EDGE_INFLUX_TLS_SKIP_VERIFY=false` and
   provide a valid CA.
+- **Alerting:** The mobile client includes a `watcher.py` script that triggers Termux notifications for device offline/online events using MQTT LWT.
